@@ -5,8 +5,15 @@ let pool;
 
 const connectDB = async () => {
   try {
+    // Parse the DATABASE_URL to handle SSL properly
+    const url = new URL(process.env.DATABASE_URL);
+    
     pool = new Pool({
-      connectionString: process.env.DATABASE_URL,
+      host: url.hostname,
+      port: url.port,
+      database: url.pathname.slice(1),
+      user: url.username,
+      password: url.password,
       ssl: {
         rejectUnauthorized: false // Required for NeonDB
       },
