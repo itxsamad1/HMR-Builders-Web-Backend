@@ -132,3 +132,4 @@ npm run setup-db
 - [PostgreSQL Documentation](https://www.postgresql.org/docs/)
 - [Express.js Documentation](https://expressjs.com/)
 - [JWT Documentation](https://jwt.io/)
+

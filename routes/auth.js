@@ -245,101 +245,12 @@ router.post('/refresh', async (req, res) => {
   }
 });
 
-// Get current user
-router.get('/me', authenticateToken, async (req, res) => {
-  try {
-    res.json({
-      message: 'User profile retrieved successfully',
-      user: req.user.getPublicProfile()
-    });
-  } catch (error) {
-    console.error('Get user error:', error);
-    res.status(500).json({
-      error: 'Failed to get user profile',
-      message: 'Unable to retrieve user information'
-    });
-  }
-});
-
 // Logout (client-side token removal)
 router.post('/logout', (req, res) => {
   res.json({
     message: 'Logout successful',
     note: 'Please remove tokens from client storage'
   });
-});
-
-// Verify email
-router.post('/verify-email', validateEmail, async (req, res) => {
-  try {
-    const { email, token } = req.body;
-
-    const user = await User.findOne({ 
-      email, 
-      emailVerificationToken: token 
-    });
-
-    if (!user) {
-      return res.status(400).json({
-        error: 'Invalid verification',
-        message: 'Invalid email or verification token'
-      });
-    }
-
-    user.isEmailVerified = true;
-    user.emailVerificationToken = undefined;
-    await user.save();
-
-    res.json({
-      message: 'Email verified successfully',
-      user: user.getPublicProfile()
-    });
-  } catch (error) {
-    console.error('Email verification error:', error);
-    res.status(500).json({
-      error: 'Email verification failed',
-      message: 'Unable to verify email address'
-    });
-  }
-});
-
-// Request password reset
-router.post('/forgot-password', validateEmail, async (req, res) => {
-  try {
-    const { email } = req.body;
-
-    const user = await User.findOne({ email });
-    if (!user) {
-      // Don't reveal if email exists
-      return res.json({
-        message: 'If an account with that email exists, a password reset link has been sent'
-      });
-    }
-
-    // Generate reset token
-    const resetToken = jwt.sign(
-      { userId: user._id, type: 'password-reset' },
-      process.env.JWT_SECRET,
-      { expiresIn: '1h' }
-    );
-
-    user.passwordResetToken = resetToken;
-    user.passwordResetExpires = Date.now() + 3600000; // 1 hour
-    await user.save();
-
-    // TODO: Send email with reset link
-    console.log('Password reset token:', resetToken);
-
-    res.json({
-      message: 'If an account with that email exists, a password reset link has been sent'
-    });
-  } catch (error) {
-    console.error('Password reset error:', error);
-    res.status(500).json({
-      error: 'Password reset failed',
-      message: 'Unable to process password reset request'
-    });
-  }
 });
 
 // Get current user profile

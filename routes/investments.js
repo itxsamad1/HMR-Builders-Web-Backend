@@ -21,15 +21,9 @@ router.post('/', authenticateToken, async (req, res) => {
     await query('BEGIN');
 
     try {
-      // Lock the property row to prevent race conditions
-      await query(
-        'SELECT tokenization_available_tokens FROM properties WHERE id = $1 FOR UPDATE',
-        [propertyId]
-      );
-
-      // Check if property exists and has enough tokens
+      // Check if property exists and has enough tokens (handle both UUID and slug)
       const propertyResult = await query(
-        'SELECT id, tokenization_available_tokens, tokenization_price_per_token FROM properties WHERE id = $1 AND is_active = TRUE',
+        'SELECT id, tokenization_available_tokens, tokenization_price_per_token FROM properties WHERE (id::text = $1 OR slug = $1) AND is_active = TRUE FOR UPDATE',
         [propertyId]
       );
 
@@ -61,18 +55,27 @@ router.post('/', authenticateToken, async (req, res) => {
           payment_method, payment_status, status, confirmed_at, activated_at
         ) VALUES ($1, $2, $3, $4, $5, $6, 'completed', 'active', NOW(), NOW())
         RETURNING id, created_at`,
-        [userId, propertyId, investmentAmount, tokensPurchased, pricePerToken, payment?.method || 'bank_transfer']
+        [userId, property.id, investmentAmount, tokensPurchased, pricePerToken, payment?.method || 'bank_transfer']
       );
 
       // Update property token availability
       await query(
         'UPDATE properties SET tokenization_available_tokens = tokenization_available_tokens - $1 WHERE id = $2',
-        [tokensPurchased, propertyId]
+        [tokensPurchased, property.id]
       );
 
-      // Update user wallet
+      // Create wallet if it doesn't exist, then update
       await query(
-        'UPDATE user_wallets SET total_invested = total_invested + $1, total_tokens = total_tokens + $2 WHERE user_id = $3',
+        `INSERT INTO user_wallets (user_id, total_investment, total_tokens)
+         SELECT $3, $1, $2
+         WHERE NOT EXISTS (SELECT 1 FROM user_wallets WHERE user_id = $3)
+         ON CONFLICT DO NOTHING`,
+        [investmentAmount, tokensPurchased, userId]
+      );
+      
+      // Update wallet
+      await query(
+        'UPDATE user_wallets SET total_investment = total_investment + $1, total_tokens = total_tokens + $2, updated_at = NOW() WHERE user_id = $3',
         [investmentAmount, tokensPurchased, userId]
       );
 
@@ -98,9 +101,15 @@ router.post('/', authenticateToken, async (req, res) => {
 
   } catch (error) {
     console.error('Create investment error:', error);
+    console.error('Error details:', {
+      message: error.message,
+      code: error.code,
+      detail: error.detail,
+      stack: error.stack
+    });
     res.status(500).json({
       error: 'Investment creation failed',
-      message: 'Unable to create investment'
+      message: error.message || 'Unable to create investment'
     });
   }
 });
