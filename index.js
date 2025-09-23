@@ -14,6 +14,8 @@ const investmentRoutes = require('./routes/investments');
 const userRoutes = require('./routes/users');
 const adminRoutes = require('./routes/admin');
 const docsRoutes = require('./routes/docs');
+const paymentMethodRoutes = require('./routes/paymentMethods');
+const walletTransactionRoutes = require('./routes/walletTransactions');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -76,6 +78,8 @@ app.use('/api/investments', investmentRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/docs', docsRoutes);
+app.use('/api/payment-methods', paymentMethodRoutes);
+app.use('/api/wallet-transactions', walletTransactionRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {

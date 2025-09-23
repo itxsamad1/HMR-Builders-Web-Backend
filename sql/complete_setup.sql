@@ -10,6 +10,8 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- Step 2: Drop existing tables if they exist (to start fresh)
 DROP TABLE IF EXISTS notifications CASCADE;
 DROP TABLE IF EXISTS token_transactions CASCADE;
+DROP TABLE IF EXISTS wallet_transactions CASCADE;
+DROP TABLE IF EXISTS payment_methods CASCADE;
 DROP TABLE IF EXISTS investments CASCADE;
 DROP TABLE IF EXISTS user_wallets CASCADE;
 DROP TABLE IF EXISTS properties CASCADE;
@@ -56,6 +58,48 @@ CREATE TABLE users (
     is_active BOOLEAN DEFAULT TRUE,
     last_login_at TIMESTAMP,
     last_activity_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Step 4.5: Create payment_methods table
+CREATE TABLE payment_methods (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    card_type VARCHAR(20) NOT NULL CHECK (card_type IN ('visa', 'mastercard')),
+    card_number_masked VARCHAR(19) NOT NULL, -- Store only last 4 digits + masked format
+    card_holder_name VARCHAR(255) NOT NULL,
+    expiry_month INTEGER NOT NULL CHECK (expiry_month >= 1 AND expiry_month <= 12),
+    expiry_year INTEGER NOT NULL CHECK (expiry_year >= 2024),
+    cvv_hash VARCHAR(255) NOT NULL, -- Store hashed CVV for security
+    billing_address JSONB NOT NULL DEFAULT '{}',
+    currency VARCHAR(3) NOT NULL DEFAULT 'PKR' CHECK (currency IN ('PKR', 'USD', 'EUR', 'GBP')),
+    is_default BOOLEAN DEFAULT FALSE,
+    is_verified BOOLEAN DEFAULT FALSE,
+    verification_attempts INTEGER DEFAULT 0,
+    status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'blocked')),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, card_number_masked) -- Prevent duplicate cards per user
+);
+
+-- Step 4.6: Create wallet_transactions table
+CREATE TABLE wallet_transactions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    payment_method_id UUID REFERENCES payment_methods(id) ON DELETE SET NULL,
+    transaction_type VARCHAR(20) NOT NULL CHECK (transaction_type IN ('deposit', 'withdrawal', 'investment', 'return', 'fee')),
+    amount DECIMAL(15, 2) NOT NULL,
+    currency VARCHAR(3) NOT NULL DEFAULT 'PKR',
+    exchange_rate DECIMAL(10, 6) DEFAULT 1.0, -- For currency conversion
+    amount_in_pkr DECIMAL(15, 2) NOT NULL, -- Store amount in PKR for consistency
+    status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'completed', 'failed', 'cancelled')),
+    description TEXT,
+    reference_id VARCHAR(255), -- External payment gateway reference
+    otp_verified BOOLEAN DEFAULT FALSE,
+    otp_attempts INTEGER DEFAULT 0,
+    metadata JSONB DEFAULT '{}', -- Store additional transaction data
+    processed_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -195,6 +239,14 @@ CREATE INDEX idx_properties_is_active ON properties(is_active);
 CREATE INDEX idx_properties_is_featured ON properties(is_featured);
 CREATE INDEX idx_properties_city ON properties(location_city);
 
+CREATE INDEX idx_payment_methods_user_id ON payment_methods(user_id);
+CREATE INDEX idx_payment_methods_card_type ON payment_methods(card_type);
+CREATE INDEX idx_payment_methods_is_default ON payment_methods(is_default);
+CREATE INDEX idx_wallet_transactions_user_id ON wallet_transactions(user_id);
+CREATE INDEX idx_wallet_transactions_type ON wallet_transactions(transaction_type);
+CREATE INDEX idx_wallet_transactions_status ON wallet_transactions(status);
+CREATE INDEX idx_wallet_transactions_payment_method ON wallet_transactions(payment_method_id);
+
 CREATE INDEX idx_investments_user_id ON investments(user_id);
 CREATE INDEX idx_investments_property_id ON investments(property_id);
 CREATE INDEX idx_investments_status ON investments(status);
@@ -208,6 +260,8 @@ CREATE INDEX idx_notifications_is_read ON notifications(is_read);
 
 -- Step 11: Create triggers for updated_at
 CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_payment_methods_updated_at BEFORE UPDATE ON payment_methods FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_wallet_transactions_updated_at BEFORE UPDATE ON wallet_transactions FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_properties_updated_at BEFORE UPDATE ON properties FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_investments_updated_at BEFORE UPDATE ON investments FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_user_wallets_updated_at BEFORE UPDATE ON user_wallets FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

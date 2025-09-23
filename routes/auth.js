@@ -73,6 +73,143 @@ router.post('/register', validateUserRegistration, async (req, res) => {
   }
 });
 
+// Register user with payment method
+router.post('/register-with-payment', validateUserRegistration, async (req, res) => {
+  try {
+    const { 
+      name, 
+      email, 
+      password, 
+      firstName, 
+      lastName,
+      paymentMethod 
+    } = req.body;
+
+    // Check if user already exists
+    const existingUser = await query('SELECT id FROM users WHERE email = $1', [email]);
+    if (existingUser.rows.length > 0) {
+      return res.status(400).json({
+        error: 'User already exists',
+        message: 'An account with this email already exists'
+      });
+    }
+
+    // Validate payment method if provided
+    if (paymentMethod) {
+      const { cardNumber, cardHolderName, expiryMonth, expiryYear, cvv, currency } = paymentMethod;
+      
+      if (!cardNumber || !cardHolderName || !expiryMonth || !expiryYear || !cvv) {
+        return res.status(400).json({
+          error: 'Invalid payment method',
+          message: 'Payment method details are incomplete'
+        });
+      }
+    }
+
+    // Start transaction
+    await query('BEGIN');
+
+    try {
+      // Hash password
+      const hashedPassword = await bcrypt.hash(password, 12);
+
+      // Create new user
+      const userResult = await query(
+        `INSERT INTO users (name, email, password_hash, first_name, last_name, is_email_verified)
+         VALUES ($1, $2, $3, $4, $5, FALSE)
+         RETURNING id, email, name, first_name, last_name`,
+        [
+          name,
+          email,
+          hashedPassword,
+          firstName || name.split(' ')[0],
+          lastName || name.split(' ').slice(1).join(' ')
+        ]
+      );
+
+      const user = userResult.rows[0];
+
+      // Create user wallet
+      await query(
+        'INSERT INTO user_wallets (user_id, available_balance, total_investment, total_tokens) VALUES ($1, $2, $3, $4)',
+        [user.id, 0, 0, 0]
+      );
+
+      let paymentMethodData = null;
+
+      // Add payment method if provided
+      if (paymentMethod) {
+        const bcrypt = require('bcryptjs');
+        
+        // Helper functions (same as in paymentMethods.js)
+        const maskCardNumber = (cardNumber) => {
+          const cleaned = cardNumber.replace(/\D/g, '');
+          if (cleaned.length < 4) return '****';
+          return '*'.repeat(cleaned.length - 4) + cleaned.slice(-4);
+        };
+
+        const detectCardType = (cardNumber) => {
+          const cleaned = cardNumber.replace(/\D/g, '');
+          if (/^4/.test(cleaned)) return 'visa';
+          if (/^5[1-5]/.test(cleaned) || /^2[2-7]/.test(cleaned)) return 'mastercard';
+          return null;
+        };
+
+        const { cardNumber, cardHolderName, expiryMonth, expiryYear, cvv, currency = 'PKR' } = paymentMethod;
+        
+        const cardType = detectCardType(cardNumber);
+        if (!cardType || !['visa', 'mastercard'].includes(cardType)) {
+          throw new Error('Only VISA and Mastercard are supported');
+        }
+
+        const cardNumberMasked = maskCardNumber(cardNumber);
+        const cvvHash = await bcrypt.hash(cvv, 10);
+
+        const paymentResult = await query(
+          `INSERT INTO payment_methods 
+           (user_id, card_type, card_number_masked, card_holder_name, expiry_month, expiry_year, cvv_hash, currency, is_default, is_verified)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, TRUE, FALSE)
+           RETURNING id, card_type, card_number_masked, card_holder_name, expiry_month, expiry_year, currency`,
+          [user.id, cardType, cardNumberMasked, cardHolderName, expiryMonth, expiryYear, cvvHash, currency]
+        );
+
+        paymentMethodData = paymentResult.rows[0];
+      }
+
+      // Generate tokens
+      const token = generateToken(user);
+      const refreshToken = generateRefreshToken(user);
+
+      await query('COMMIT');
+
+      res.status(201).json({
+        message: 'User registered successfully',
+        token,
+        refreshToken,
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          firstName: user.first_name,
+          lastName: user.last_name
+        },
+        paymentMethod: paymentMethodData
+      });
+
+    } catch (error) {
+      await query('ROLLBACK');
+      throw error;
+    }
+
+  } catch (error) {
+    console.error('Registration with payment error:', error);
+    res.status(500).json({
+      error: 'Registration failed',
+      message: error.message || 'Unable to create user account'
+    });
+  }
+});
+
 // Login user
 router.post('/login', validateUserLogin, async (req, res) => {
   try {
