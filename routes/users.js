@@ -72,12 +72,16 @@ router.get('/wallet', authenticateToken, async (req, res) => {
       
       return res.json({
         message: 'Wallet retrieved successfully',
-        wallet: {
+        data: {
           id: wallet.id,
-          totalInvested: wallet.total_invested || 0,
-          totalTokens: wallet.total_tokens || 0,
-          totalReturns: wallet.total_returns || 0,
-          createdAt: wallet.created_at
+          userId: wallet.user_id,
+          totalBalance: wallet.total_balance || 0,
+          availableBalance: wallet.available_balance || 0,
+          investedAmount: 0,
+          totalReturns: 0,
+          totalTokens: 0,
+          createdAt: wallet.created_at,
+          updatedAt: wallet.updated_at
         }
       });
     }
@@ -100,13 +104,16 @@ router.get('/wallet', authenticateToken, async (req, res) => {
     
     res.json({
       message: 'Wallet retrieved successfully',
-      wallet: {
+      data: {
         id: wallet.id,
-        totalInvested: portfolio.total_invested || 0,
-        totalTokens: portfolio.total_tokens || 0,
+        userId: wallet.user_id,
+        totalBalance: wallet.total_balance || 0,
+        availableBalance: wallet.available_balance || 0,
+        investedAmount: portfolio.total_invested || 0,
         totalReturns: portfolio.total_returns || 0,
-        totalInvestments: portfolio.total_investments || 0,
-        createdAt: wallet.created_at
+        totalTokens: portfolio.total_tokens || 0,
+        createdAt: wallet.created_at,
+        updatedAt: wallet.updated_at
       }
     });
   } catch (error) {

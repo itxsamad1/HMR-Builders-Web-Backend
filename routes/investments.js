@@ -147,22 +147,19 @@ router.get('/my-investments', authenticateToken, async (req, res) => {
 
     const investments = result.rows.map(row => ({
       id: row.id,
-      property: {
-        title: row.property_title,
-        slug: row.property_slug,
-        images: row.property_images
-      },
-      investmentAmount: row.investment_amount,
+      propertyId: row.property_id,
+      propertyTitle: row.property_title,
+      propertySlug: row.property_slug,
       tokensPurchased: row.tokens_purchased,
-      pricePerToken: row.price_per_token,
+      investmentAmount: row.investment_amount,
+      totalEarned: 0, // Calculate this based on your business logic
       status: row.status,
-      createdAt: row.created_at,
-      confirmedAt: row.confirmed_at
+      createdAt: row.created_at
     }));
 
     res.json({
       message: 'Investments retrieved successfully',
-      investments,
+      data: investments,
       pagination: {
         currentPage: parseInt(page),
         totalPages: Math.ceil(total / parseInt(limit)),
