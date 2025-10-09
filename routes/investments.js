@@ -145,17 +145,27 @@ router.get('/my-investments', authenticateToken, async (req, res) => {
 
     const total = parseInt(countResult.rows[0].total);
 
-    const investments = result.rows.map(row => ({
-      id: row.id,
-      propertyId: row.property_id,
-      propertyTitle: row.property_title,
-      propertySlug: row.property_slug,
-      tokensPurchased: row.tokens_purchased,
-      investmentAmount: row.investment_amount,
-      totalEarned: 0, // Calculate this based on your business logic
-      status: row.status,
-      createdAt: row.created_at
-    }));
+    const investments = result.rows.map(row => {
+      const currentValue = parseFloat(row.investment_amount) + parseFloat(row.total_earned || 0);
+      const roiPercentage = parseFloat(row.investment_amount) > 0 
+        ? ((currentValue - parseFloat(row.investment_amount)) / parseFloat(row.investment_amount)) * 100 
+        : 0;
+
+      return {
+        id: row.id,
+        property: {
+          id: row.property_id,
+          title: row.property_title,
+          location: row.property_location || 'Location not specified'
+        },
+        tokensPurchased: parseInt(row.tokens_purchased),
+        investmentAmount: parseFloat(row.investment_amount),
+        currentValue: currentValue,
+        roiPercentage: roiPercentage,
+        status: row.status,
+        investmentDate: row.created_at
+      };
+    });
 
     res.json({
       message: 'Investments retrieved successfully',
@@ -174,6 +184,64 @@ router.get('/my-investments', authenticateToken, async (req, res) => {
     res.status(500).json({
       error: 'Failed to retrieve investments',
       message: 'Unable to fetch investments'
+    });
+  }
+});
+
+// Get investments by user ID (for mobile app)
+router.get('/user/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    // No auth required for demo
+
+    const result = await query(
+      `SELECT 
+        i.id, i.investment_amount, i.tokens_purchased, i.price_per_token,
+        i.status, i.created_at, i.total_earned,
+        p.id as property_id, p.title as property_title, p.location_address as property_location,
+        p.images as property_images, p.status as property_status
+      FROM investments i
+      JOIN properties p ON p.id = i.property_id
+      WHERE i.user_id = $1 AND i.status = 'active'
+      ORDER BY i.created_at DESC`,
+      [userId]
+    );
+
+    const investments = result.rows.map(row => {
+      const currentValue = parseFloat(row.investment_amount) + parseFloat(row.total_earned || 0);
+      const roiPercentage = parseFloat(row.investment_amount) > 0 
+        ? ((currentValue - parseFloat(row.investment_amount)) / parseFloat(row.investment_amount)) * 100 
+        : 0;
+
+      return {
+        id: row.id,
+        property: {
+          id: row.property_id,
+          title: row.property_title,
+          location: row.property_location
+        },
+        tokensPurchased: parseInt(row.tokens_purchased),
+        investmentAmount: parseFloat(row.investment_amount),
+        currentValue: currentValue,
+        roiPercentage: roiPercentage,
+        status: row.status,
+        investmentDate: row.created_at
+      };
+    });
+
+    res.json({
+      success: true,
+      data: {
+        investments: investments
+      }
+    });
+
+  } catch (error) {
+    console.error('Get user investments error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to retrieve investments',
+      message: error.message
     });
   }
 });

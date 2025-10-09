@@ -1,0 +1,347 @@
+import React, { useEffect } from 'react';
+import { useQuery, useQueryClient } from 'react-query';
+import { 
+  TrendingUp, 
+  DollarSign, 
+  Building2, 
+  PieChart, 
+  Wallet, 
+  Activity,
+  ArrowUpRight,
+  ArrowDownRight
+} from 'lucide-react';
+import Layout from '../components/Layout/Layout';
+import Card from '../components/ui/Card';
+import Button from '../components/ui/Button';
+import { Link } from 'react-router-dom';
+import { useUser } from '../contexts/UserContext';
+import { 
+  portfolioAPI, 
+  usersAPI, 
+  investmentsAPI, 
+  propertiesAPI,
+  walletTransactionsAPI 
+} from '../services/api';
+import { formatCurrency, formatPercentage } from '../utils/formatLocation';
+import { demoUser, demoPortfolio, demoWallet, demoTransactions } from '../services/demoData';
+
+const Dashboard = () => {
+  const { currentUser } = useUser();
+  const userId = currentUser.id;
+  const queryClient = useQueryClient();
+
+  // Invalidate queries when user changes
+  useEffect(() => {
+    console.log('User changed to:', currentUser.name, 'ID:', userId);
+    queryClient.invalidateQueries(['portfolio', userId]);
+    queryClient.invalidateQueries(['portfolio-summary', userId]);
+    queryClient.invalidateQueries(['profile', userId]);
+    queryClient.invalidateQueries(['investments', userId]);
+    queryClient.invalidateQueries(['wallet', userId]);
+    queryClient.invalidateQueries(['transactions', userId]);
+    queryClient.invalidateQueries(['featured-properties']);
+  }, [userId, queryClient, currentUser.name]);
+
+  // Fetch dashboard data
+  const { data: portfolioData, isLoading: portfolioLoading, error: portfolioError } = useQuery(
+    ['portfolio', userId],
+    () => portfolioAPI.getPortfolio(userId),
+    { 
+      enabled: !!userId,
+      onSuccess: (data) => {
+        console.log('Portfolio data for', currentUser.name, ':', data);
+      },
+      onError: (error) => {
+        console.error('Portfolio error for', currentUser.name, ':', error);
+      }
+    }
+  );
+
+  const { data: summaryData, isLoading: summaryLoading } = useQuery(
+    ['portfolioSummary', userId],
+    () => portfolioAPI.getSummary(userId),
+    { enabled: !!userId }
+  );
+
+  const { data: profileData, isLoading: profileLoading, error: profileError } = useQuery(
+    ['profile', userId],
+    () => usersAPI.getProfileById(userId),
+    { 
+      enabled: !!userId,
+      onSuccess: (data) => {
+        console.log('Profile data for', currentUser.name, ':', data);
+      },
+      onError: (error) => {
+        console.error('Profile error for', currentUser.name, ':', error);
+      }
+    }
+  );
+
+  const { data: investmentsData, isLoading: investmentsLoading } = useQuery(
+    ['investments', userId],
+    () => investmentsAPI.getByUserId(userId),
+    { enabled: !!userId }
+  );
+
+  const { data: walletData, isLoading: walletLoading } = useQuery(
+    ['wallet', userId],
+    () => usersAPI.getWalletById(userId),
+    { enabled: !!userId }
+  );
+
+  const { data: recentTransactions, isLoading: transactionsLoading } = useQuery(
+    ['recentTransactions', userId],
+    () => walletTransactionsAPI.getByUserId(userId, { limit: 5 }),
+    { enabled: !!userId }
+  );
+
+  const { data: featuredProperties, isLoading: propertiesLoading } = useQuery(
+    'featuredProperties',
+    () => propertiesAPI.getFeatured()
+  );
+
+  const portfolio = portfolioData?.data?.data || {};
+  const summary = summaryData?.data?.data || {};
+  const profile = profileData?.data?.data || {};
+  const investments = investmentsData?.data?.data?.investments || [];
+  const wallet = walletData?.data?.data || {};
+  const transactions = recentTransactions?.data?.data?.transactions || [];
+  const properties = featuredProperties?.data?.data?.properties || featuredProperties?.data?.properties || featuredProperties?.properties || [];
+
+  // Debug logging
+  console.log('Dashboard - Portfolio:', portfolio);
+  console.log('Dashboard - Summary:', summary);
+  console.log('Dashboard - Profile:', profile);
+  console.log('Dashboard - Investments:', investments);
+  console.log('Dashboard - Wallet:', wallet);
+
+  if (portfolioLoading || summaryLoading || profileLoading) {
+    return (
+      <Layout>
+        <div className="min-h-screen bg-gray-50 py-8">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-center items-center h-64">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+                <p className="text-gray-600">Loading dashboard for {currentUser.name}...</p>
+                <p className="text-sm text-gray-500 mt-2">User ID: {userId}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  const stats = [
+    {
+      name: 'Total Investment',
+      value: formatCurrency(portfolio.totalInvestment || 0),
+      change: '+12.5%',
+      changeType: 'positive',
+      icon: DollarSign,
+    },
+    {
+      name: 'Current Value',
+      value: formatCurrency(portfolio.currentValue || 0),
+      change: '+8.2%',
+      changeType: 'positive',
+      icon: TrendingUp,
+    },
+    {
+      name: 'Total ROI',
+      value: formatPercentage(portfolio.totalROI || 0),
+      change: '+2.1%',
+      changeType: 'positive',
+      icon: PieChart,
+    },
+    {
+      name: 'Active Investments',
+      value: investments.length.toString(),
+      change: '+1',
+      changeType: 'positive',
+      icon: Building2,
+    },
+  ];
+
+  return (
+    <Layout>
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Header */}
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900">
+              Welcome back, {profile.firstName || 'User'}!
+            </h1>
+            <p className="text-gray-600 mt-2">
+              Here's an overview of your investment portfolio
+            </p>
+          </div>
+
+          {/* Stats Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {stats.map((stat) => (
+              <Card key={stat.name} className="p-6">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <stat.icon className="h-8 w-8 text-primary-600" />
+                  </div>
+                  <div className="ml-4 flex-1">
+                    <p className="text-sm font-medium text-gray-500">{stat.name}</p>
+                    <p className="text-2xl font-semibold text-gray-900">{stat.value}</p>
+                    <div className="flex items-center mt-1">
+                      {stat.changeType === 'positive' ? (
+                        <ArrowUpRight className="h-4 w-4 text-green-500" />
+                      ) : (
+                        <ArrowDownRight className="h-4 w-4 text-red-500" />
+                      )}
+                      <span className={`text-sm font-medium ${
+                        stat.changeType === 'positive' ? 'text-green-600' : 'text-red-600'
+                      }`}>
+                        {stat.change}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Portfolio Overview */}
+            <div className="lg:col-span-2">
+              <Card className="p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl font-semibold text-gray-900">Portfolio Overview</h2>
+                  <Button as={Link} to="/portfolio" variant="outline">
+                    View All
+                  </Button>
+                </div>
+                
+                {investments.length > 0 ? (
+                  <div className="space-y-4">
+                    {investments.slice(0, 3).map((investment) => (
+                      <div key={investment.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                        <div className="flex items-center">
+                          <div className="flex-shrink-0">
+                            <Building2 className="h-8 w-8 text-primary-600" />
+                          </div>
+                          <div className="ml-4">
+                            <p className="text-sm font-medium text-gray-900">
+                              {investment.property?.title || 'Property'}
+                            </p>
+                            <p className="text-sm text-gray-500">
+                              {investment.property?.location || 'Location'}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-medium text-gray-900">
+                            {formatCurrency(investment.currentValue || investment.investmentAmount)}
+                          </p>
+                          <p className="text-sm text-green-600">
+                            {formatPercentage(investment.roiPercentage || 0)}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <Building2 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-500 mb-4">No investments yet</p>
+                    <Button as={Link} to="/properties">
+                      Start Investing
+                    </Button>
+                  </div>
+                )}
+              </Card>
+            </div>
+
+            {/* Recent Activity */}
+            <div>
+              <Card className="p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl font-semibold text-gray-900">Recent Activity</h2>
+                  <Activity className="h-5 w-5 text-gray-400" />
+                </div>
+                
+                {transactions.length > 0 ? (
+                  <div className="space-y-4">
+                    {transactions.slice(0, 5).map((transaction) => (
+                      <div key={transaction.id} className="flex items-center justify-between">
+                        <div className="flex items-center">
+                          <div className={`h-2 w-2 rounded-full ${
+                            transaction.type === 'deposit' ? 'bg-green-500' : 'bg-red-500'
+                          }`} />
+                          <div className="ml-3">
+                            <p className="text-sm font-medium text-gray-900">
+                              {transaction.type === 'deposit' ? 'Deposit' : 'Withdrawal'}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {new Date(transaction.created_at).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+                        <p className="text-sm font-medium text-gray-900">
+                          {formatCurrency(transaction.amount)}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-4">
+                    <Activity className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                    <p className="text-sm text-gray-500">No recent activity</p>
+                  </div>
+                )}
+              </Card>
+            </div>
+          </div>
+
+          {/* Featured Properties */}
+          {properties.length > 0 && (
+            <div className="mt-8">
+              <Card className="p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl font-semibold text-gray-900">Featured Properties</h2>
+                  <Button as={Link} to="/properties" variant="outline">
+                    View All
+                  </Button>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {properties.slice(0, 3).map((property) => (
+                    <div key={property.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                      <div className="aspect-w-16 aspect-h-9 mb-4">
+                        {property.images?.gallery?.[0] && (
+                          <img
+                            src={property.images.gallery[0]}
+                            alt={property.title}
+                            className="w-full h-32 object-cover rounded-lg"
+                          />
+                        )}
+                      </div>
+                      <h3 className="font-semibold text-gray-900 mb-2">{property.title}</h3>
+                      <p className="text-sm text-gray-600 mb-2">{property.location}</p>
+                      <div className="flex justify-between items-center">
+                        <span className="text-lg font-bold text-primary-600">
+                          {formatCurrency(property.price || property.listingPriceMin)}
+                        </span>
+                        <span className="text-sm text-green-600">
+                          {property.roi || property.expectedRoiMin}% ROI
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            </div>
+          )}
+        </div>
+      </div>
+    </Layout>
+  );
+};
+
+export default Dashboard;

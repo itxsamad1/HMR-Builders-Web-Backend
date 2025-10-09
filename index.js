@@ -16,6 +16,9 @@ const adminRoutes = require('./routes/admin');
 const docsRoutes = require('./routes/docs');
 const paymentMethodRoutes = require('./routes/paymentMethods');
 const walletTransactionRoutes = require('./routes/walletTransactions');
+const portfolioRoutes = require('./routes/portfolio');
+const calculatorRoutes = require('./routes/calculator');
+const supportRoutes = require('./routes/support');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -40,10 +43,10 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 
-// Rate limiting
+// Rate limiting (increased for development)
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+  max: 1000, // limit each IP to 1000 requests per windowMs (increased for dev)
   message: {
     error: 'Too many requests from this IP, please try again later.'
   }
@@ -80,6 +83,9 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/docs', docsRoutes);
 app.use('/api/payment-methods', paymentMethodRoutes);
 app.use('/api/wallet-transactions', walletTransactionRoutes);
+app.use('/api/portfolio', portfolioRoutes);
+app.use('/api/calculator', calculatorRoutes);
+app.use('/api/support', supportRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {

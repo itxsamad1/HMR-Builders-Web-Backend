@@ -45,6 +45,72 @@ router.get('/profile', authenticateToken, async (req, res) => {
   }
 });
 
+// Get user profile (mobile app format)
+router.get('/profile/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    // No auth required for demo
+
+    const result = await query(
+      'SELECT id, first_name, last_name, email, phone, created_at, kyc_status FROM users WHERE id = $1',
+      [userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        error: 'User not found',
+        message: 'User profile not found'
+      });
+    }
+
+    const user = result.rows[0];
+
+    // Get investment summary
+    const investmentResult = await query(
+      `SELECT 
+        COALESCE(SUM(investment_amount), 0) as total_investments,
+        COALESCE(SUM(total_earned), 0) as total_returns
+      FROM investments 
+      WHERE user_id = $1 AND status = 'active'`,
+      [userId]
+    );
+
+    const investment = investmentResult.rows[0];
+
+    // Get wallet balance
+    const walletResult = await query(
+      'SELECT available_balance FROM user_wallets WHERE user_id = $1',
+      [userId]
+    );
+
+    const walletBalance = walletResult.rows.length > 0 ? walletResult.rows[0].available_balance : 0;
+
+    res.json({
+      success: true,
+      data: {
+        id: user.id,
+        firstName: user.first_name,
+        lastName: user.last_name,
+        email: user.email,
+        phone: user.phone,
+        memberSince: user.created_at,
+        totalInvestments: parseFloat(investment.total_investments),
+        totalReturns: parseFloat(investment.total_returns),
+        walletBalance: parseFloat(walletBalance),
+        kycStatus: user.kyc_status
+      }
+    });
+
+  } catch (error) {
+    console.error('Get user profile error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to retrieve user profile',
+      message: error.message
+    });
+  }
+});
+
 // Get user wallet
 router.get('/wallet', authenticateToken, async (req, res) => {
   try {
@@ -121,6 +187,83 @@ router.get('/wallet', authenticateToken, async (req, res) => {
     res.status(500).json({
       error: 'Failed to retrieve wallet',
       message: 'Unable to fetch wallet data'
+    });
+  }
+});
+
+// Get user wallet (mobile app format)
+router.get('/wallet/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    // No auth required for demo
+
+    // Get wallet data
+    const walletResult = await query(
+      'SELECT * FROM user_wallets WHERE user_id = $1',
+      [userId]
+    );
+
+    if (walletResult.rows.length === 0) {
+      // Create wallet if it doesn't exist
+      await query(
+        'INSERT INTO user_wallets (user_id) VALUES ($1)',
+        [userId]
+      );
+      
+      return res.json({
+        success: true,
+        data: {
+          balance: 0,
+          totalInvested: 0,
+          totalReturns: 0,
+          availableBalance: 0
+        }
+      });
+    }
+
+    const wallet = walletResult.rows[0];
+
+    // Get investment summary
+    const investmentResult = await query(
+      `SELECT 
+        COALESCE(SUM(investment_amount), 0) as total_invested,
+        COALESCE(SUM(total_earned), 0) as total_returns
+      FROM investments 
+      WHERE user_id = $1 AND status = 'active'`,
+      [userId]
+    );
+
+    // Get transaction totals
+    const transactionResult = await query(
+      `SELECT 
+        COALESCE(SUM(CASE WHEN transaction_type = 'deposit' THEN amount_in_pkr ELSE 0 END), 0) as total_deposited,
+        COALESCE(SUM(CASE WHEN transaction_type = 'withdrawal' THEN amount_in_pkr ELSE 0 END), 0) as total_withdrawn
+      FROM wallet_transactions 
+      WHERE user_id = $1 AND status = 'completed'`,
+      [userId]
+    );
+
+    const investment = investmentResult.rows[0];
+    const transaction = transactionResult.rows[0];
+
+    res.json({
+      success: true,
+      data: {
+        balance: parseFloat(wallet.total_balance || 0),
+        totalInvested: parseFloat(investment.total_invested),
+        totalReturns: parseFloat(investment.total_returns),
+        availableBalance: parseFloat(wallet.available_balance || 0),
+        totalDeposited: parseFloat(transaction.total_deposited),
+        totalWithdrawn: parseFloat(transaction.total_withdrawn)
+      }
+    });
+
+  } catch (error) {
+    console.error('Get wallet error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to retrieve wallet',
+      message: error.message
     });
   }
 });

@@ -17,9 +17,15 @@ const connectDB = async () => {
       ssl: {
         rejectUnauthorized: false // Required for NeonDB
       },
-      max: 20,
-      idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 2000,
+      max: 10,
+      min: 2,
+      idleTimeoutMillis: 10000,
+      connectionTimeoutMillis: 5000,
+      acquireTimeoutMillis: 10000,
+      createTimeoutMillis: 10000,
+      destroyTimeoutMillis: 5000,
+      reapIntervalMillis: 1000,
+      createRetryIntervalMillis: 200,
     });
 
     // Test the connection
@@ -44,14 +50,28 @@ const getPool = () => {
 const query = async (text, params) => {
   const pool = getPool();
   const start = Date.now();
-  try {
-    const res = await pool.query(text, params);
-    const duration = Date.now() - start;
-    console.log('Executed query', { text, duration, rows: res.rowCount });
-    return res;
-  } catch (error) {
-    console.error('Database query error:', error);
-    throw error;
+  let retries = 3;
+  
+  while (retries > 0) {
+    try {
+      const res = await pool.query(text, params);
+      const duration = Date.now() - start;
+      console.log('Executed query', { text, duration, rows: res.rowCount });
+      return res;
+    } catch (error) {
+      console.error('Database query error (retries left:', retries - 1, '):', error.message);
+      
+      if (error.code === 'ECONNRESET' || error.code === 'ENOTFOUND' || error.code === 'ETIMEDOUT') {
+        retries--;
+        if (retries > 0) {
+          console.log('Retrying query in 1 second...');
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          continue;
+        }
+      }
+      
+      throw error;
+    }
   }
 };
 

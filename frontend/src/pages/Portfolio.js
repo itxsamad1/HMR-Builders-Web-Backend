@@ -1,0 +1,237 @@
+import React, { useState, useEffect } from 'react';
+import { useQuery, useQueryClient } from 'react-query';
+import { TrendingUp, DollarSign, Coins, PieChart, ArrowUpRight, Building2 } from 'lucide-react';
+import { useUser } from '../contexts/UserContext';
+import { portfolioAPI, usersAPI } from '../services/api';
+import Layout from '../components/Layout/Layout';
+import PortfolioCard from '../components/PortfolioCard';
+import Button from '../components/ui/Button';
+import Card from '../components/ui/Card';
+import { formatCurrency, formatPercentage } from '../utils/formatLocation';
+import { demoUser, demoPortfolio } from '../services/demoData';
+
+const Portfolio = () => {
+  const { currentUser } = useUser();
+  const userId = currentUser.id;
+  const [activeTab, setActiveTab] = useState('overview');
+  const queryClient = useQueryClient();
+
+  // Invalidate queries when user changes
+  useEffect(() => {
+    queryClient.invalidateQueries(['portfolio', userId]);
+    queryClient.invalidateQueries(['portfolio-summary', userId]);
+    queryClient.invalidateQueries(['profile', userId]);
+  }, [userId, queryClient]);
+
+  // Fetch portfolio data
+  const { data: portfolioData, isLoading: portfolioLoading } = useQuery(
+    ['portfolio', userId],
+    () => portfolioAPI.getPortfolio(userId),
+    {
+      enabled: !!userId,
+    }
+  );
+
+  // Fetch portfolio summary
+  const { data: summaryData, isLoading: summaryLoading } = useQuery(
+    ['portfolio-summary', userId],
+    () => portfolioAPI.getSummary(userId),
+    {
+      enabled: !!userId,
+    }
+  );
+
+  // Fetch user profile for additional data
+  const { data: profileData } = useQuery(
+    ['user-profile', userId],
+    () => usersAPI.getProfileById(userId),
+    {
+      enabled: !!userId,
+    }
+  );
+
+  const portfolio = portfolioData?.data?.data || {};
+  const summary = summaryData?.data?.data || {};
+  const profile = profileData?.data?.data || {};
+
+  // Debug logging
+  console.log('Portfolio - Portfolio data:', portfolio);
+  console.log('Portfolio - Summary data:', summary);
+  console.log('Portfolio - Profile data:', profile);
+
+
+  if (portfolioLoading || summaryLoading) {
+    return (
+      <Layout>
+        <div className="min-h-screen bg-gray-50 py-8">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="animate-pulse">
+              <div className="h-8 bg-gray-300 rounded w-1/4 mb-8"></div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="h-32 bg-gray-300 rounded"></div>
+                ))}
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <div key={i} className="h-64 bg-gray-300 rounded"></div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  return (
+    <Layout>
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Header */}
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">My Portfolio</h1>
+            <p className="text-gray-600">
+              Track your real estate investments and returns
+            </p>
+          </div>
+
+          {/* Summary Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <Card className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Total Investment</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {formatCurrency(summary.totalInvestment || 0)}
+                  </p>
+                </div>
+                <div className="p-3 bg-blue-100 rounded-full">
+                  <DollarSign className="w-6 h-6 text-blue-600" />
+                </div>
+              </div>
+            </Card>
+
+            <Card className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Current Value</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {formatCurrency(summary.currentValue || 0)}
+                  </p>
+                </div>
+                <div className="p-3 bg-green-100 rounded-full">
+                  <TrendingUp className="w-6 h-6 text-green-600" />
+                </div>
+              </div>
+            </Card>
+
+            <Card className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Total ROI</p>
+                  <p className="text-2xl font-bold text-green-600">
+                    {formatPercentage(summary.totalROI || 0)}
+                  </p>
+                </div>
+                <div className="p-3 bg-purple-100 rounded-full">
+                  <PieChart className="w-6 h-6 text-purple-600" />
+                </div>
+              </div>
+            </Card>
+          </div>
+
+          {/* Tabs */}
+          <div className="flex border-b border-gray-200 mb-6">
+            <button
+              className={`px-4 py-2 font-medium text-sm ${
+                activeTab === 'overview'
+                  ? 'border-b-2 border-primary-600 text-primary-600'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+              onClick={() => setActiveTab('overview')}
+            >
+              Overview
+            </button>
+            <button
+              className={`px-4 py-2 font-medium text-sm ${
+                activeTab === 'investments'
+                  ? 'border-b-2 border-primary-600 text-primary-600'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+              onClick={() => setActiveTab('investments')}
+            >
+              My Investments
+            </button>
+          </div>
+
+          {/* Content */}
+          {activeTab === 'overview' && (
+            <div className="space-y-6">
+              {/* Performance Chart Placeholder */}
+              <Card className="p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Performance Overview</h3>
+                <div className="h-64 bg-gray-100 rounded-lg flex items-center justify-center">
+                  <p className="text-gray-500">Performance chart will be displayed here</p>
+                </div>
+              </Card>
+
+              {/* Quick Stats */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <Card className="p-4 text-center">
+                  <Coins className="w-8 h-8 text-blue-600 mx-auto mb-2" />
+                  <p className="text-2xl font-bold text-gray-900">{summary.totalTokens || 0}</p>
+                  <p className="text-sm text-gray-600">Total Tokens</p>
+                </Card>
+                <Card className="p-4 text-center">
+                  <Building2 className="w-8 h-8 text-green-600 mx-auto mb-2" />
+                  <p className="text-2xl font-bold text-gray-900">{portfolio.investments?.length || 0}</p>
+                  <p className="text-sm text-gray-600">Properties</p>
+                </Card>
+                <Card className="p-4 text-center">
+                  <ArrowUpRight className="w-8 h-8 text-purple-600 mx-auto mb-2" />
+                  <p className="text-2xl font-bold text-gray-900">
+                    {formatPercentage(summary.totalROI || 0)}
+                  </p>
+                  <p className="text-sm text-gray-600">Average ROI</p>
+                </Card>
+                <Card className="p-4 text-center">
+                  <DollarSign className="w-8 h-8 text-orange-600 mx-auto mb-2" />
+                  <p className="text-2xl font-bold text-gray-900">
+                    {formatCurrency((summary.currentValue || 0) - (summary.totalInvestment || 0))}
+                  </p>
+                  <p className="text-sm text-gray-600">Total Gains</p>
+                </Card>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'investments' && (
+            <div>
+              {portfolio.investments && portfolio.investments.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {portfolio.investments.map((investment) => (
+                    <PortfolioCard key={investment.id} investment={investment} />
+                  ))}
+                </div>
+              ) : (
+                <Card className="p-12 text-center">
+                  <Building2 className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No Investments Yet</h3>
+                  <p className="text-gray-600 mb-6">
+                    Start building your real estate portfolio by investing in properties.
+                  </p>
+                  <Button as="a" href="/properties">
+                    Browse Properties
+                  </Button>
+                </Card>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </Layout>
+  );
+};
+
+export default Portfolio;

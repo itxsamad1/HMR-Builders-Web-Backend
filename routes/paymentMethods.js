@@ -57,10 +57,11 @@ const detectCardType = (cardNumber) => {
   return null;
 };
 
-// Get user's payment methods
-router.get('/', authenticateToken, async (req, res) => {
+// Get user's payment methods (no auth required)
+router.get('/', async (req, res) => {
   try {
-    const userId = req.user.id;
+    // For demo purposes, use the first user from database
+    const userId = 'a6702919-c381-4ebe-881a-4c3045d5f551';
     
     const result = await query(
       'SELECT id, card_type, card_number_masked, card_holder_name, expiry_month, expiry_year, currency, is_default, is_verified, status, created_at FROM payment_methods WHERE user_id = $1 AND status = $2 ORDER BY is_default DESC, created_at DESC',

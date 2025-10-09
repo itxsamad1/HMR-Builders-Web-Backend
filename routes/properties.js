@@ -70,30 +70,47 @@ router.get('/', optionalAuth, async (req, res) => {
       params
     );
 
-    const properties = propertiesResult.rows.map(row => ({
-      id: row.id,
-      title: row.title,
-      slug: row.slug,
-      shortDescription: row.short_description,
-      location: {
-        address: row.location_address,
-        city: row.location_city
-      },
-      propertyType: row.property_type,
-      status: row.status,
-      pricing: {
-        totalValue: row.pricing_total_value,
-        expectedROI: row.pricing_expected_roi
-      },
-      tokenization: {
-        totalTokens: row.tokenization_total_tokens,
-        availableTokens: row.tokenization_available_tokens,
-        pricePerToken: row.tokenization_price_per_token
-      },
-      images: row.images,
-      isFeatured: row.is_featured,
-      createdAt: row.created_at
-    }));
+    const properties = propertiesResult.rows.map(row => {
+      // Calculate funding percentage
+      const totalTokens = row.tokenization_total_tokens;
+      const availableTokens = row.tokenization_available_tokens;
+      const soldTokens = totalTokens - availableTokens;
+      const fundingPercentage = totalTokens > 0 ? (soldTokens / totalTokens) * 100 : 0;
+
+      // Format price for display
+      const formatPrice = (price) => {
+        const num = parseFloat(price);
+        if (num >= 1000000000) {
+          return `PKR ${(num / 1000000000).toFixed(1)}B`;
+        } else if (num >= 1000000) {
+          return `PKR ${(num / 1000000).toFixed(1)}M`;
+        } else if (num >= 1000) {
+          return `PKR ${(num / 1000).toFixed(0)}K`;
+        }
+        return `PKR ${num.toFixed(0)}`;
+      };
+
+      return {
+        id: row.id,
+        title: row.title,
+        slug: row.slug,
+        location: row.location_address,
+        price: formatPrice(row.pricing_total_value),
+        marketValue: formatPrice(row.pricing_market_value || row.pricing_total_value),
+        appreciation: row.pricing_appreciation,
+        roi: row.pricing_expected_roi,
+        type: row.property_type,
+        image: row.images?.thumbnail || (row.images?.gallery && row.images.gallery[0]) || null,
+        status: row.status,
+        tokens: totalTokens,
+        availableTokens: availableTokens,
+        minInvestment: formatPrice(row.pricing_min_investment),
+        description: row.short_description,
+        features: row.features || [],
+        fundingPercentage: Math.round(fundingPercentage),
+        investorCount: Math.floor(soldTokens / 10) // Estimate based on tokens sold
+      };
+    });
 
     res.json({
       message: 'Properties retrieved successfully',
@@ -174,43 +191,79 @@ router.get('/:slug', optionalAuth, async (req, res) => {
     }
 
     const row = result.rows[0];
+    
+    // Calculate funding percentage and investor count
+    const totalTokens = row.tokenization_total_tokens;
+    const availableTokens = row.tokenization_available_tokens;
+    const soldTokens = totalTokens - availableTokens;
+    const fundingPercentage = totalTokens > 0 ? (soldTokens / totalTokens) * 100 : 0;
+    const investorCount = Math.floor(soldTokens / 10); // Estimate
+
+    // Format prices
+    const formatPrice = (price) => {
+      const num = parseFloat(price);
+      if (num >= 1000000000) {
+        return `PKR ${(num / 1000000000).toFixed(1)}B`;
+      } else if (num >= 1000000) {
+        return `PKR ${(num / 1000000).toFixed(1)}M`;
+      } else if (num >= 1000) {
+        return `PKR ${(num / 1000).toFixed(0)}K`;
+      }
+      return `PKR ${num.toFixed(0)}`;
+    };
+
     const property = {
       id: row.id,
       title: row.title,
-      slug: row.slug,
-      description: row.description,
-      shortDescription: row.short_description,
-      location: {
-        address: row.location_address,
-        city: row.location_city,
-        state: row.location_state,
-        country: row.location_country
-      },
+      location: row.location_address,
       propertyType: row.property_type,
-      projectType: row.project_type,
       status: row.status,
-      floors: row.floors,
-      totalUnits: row.total_units,
-      constructionProgress: row.construction_progress,
-      pricing: {
-        totalValue: row.pricing_total_value,
-        marketValue: row.pricing_market_value,
-        appreciation: row.pricing_appreciation,
-        expectedROI: row.pricing_expected_roi,
-        minInvestment: row.pricing_min_investment
+      listingPriceMin: parseFloat(row.pricing_total_value),
+      listingPriceMax: parseFloat(row.pricing_market_value || row.pricing_total_value),
+      marketValueMin: parseFloat(row.pricing_market_value || row.pricing_total_value),
+      marketValueMax: parseFloat(row.pricing_market_value || row.pricing_total_value),
+      appreciationPercentage: parseFloat(row.pricing_appreciation.replace('%', '')),
+      expectedRoiMin: parseFloat(row.pricing_expected_roi.replace('%', '')),
+      expectedRoiMax: parseFloat(row.pricing_expected_roi.replace('%', '')),
+      totalTokens: totalTokens,
+      availableTokens: availableTokens,
+      pricePerToken: parseFloat(row.tokenization_price_per_token),
+      minInvestment: parseFloat(row.pricing_min_investment),
+      description: row.description,
+      features: row.features || [],
+      amenities: row.features || [], // Using features as amenities for now
+      propertyFeatures: {
+        bedrooms: row.unit_types ? JSON.parse(row.unit_types)[0]?.bedrooms || 0 : 0,
+        washrooms: row.unit_types ? JSON.parse(row.unit_types)[0]?.washrooms || 0 : 0,
+        livingRoom: 1,
+        kitchen: 1,
+        balcony: 1,
+        powderRoom: 0
       },
-      tokenization: {
-        totalTokens: row.tokenization_total_tokens,
-        availableTokens: row.tokenization_available_tokens,
-        pricePerToken: row.tokenization_price_per_token,
-        tokenPrice: row.tokenization_token_price
-      },
-      unitTypes: row.unit_types,
-      features: row.features,
-      images: row.images,
-      isFeatured: row.is_featured,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at
+      images: row.images?.gallery || [],
+      documents: [
+        {
+          title: "Property Brochure",
+          type: "PDF",
+          url: "https://example.com/brochure.pdf"
+        },
+        {
+          title: "Financial Projections",
+          type: "XLSX", 
+          url: "https://example.com/financials.xlsx"
+        }
+      ],
+      fundingPercentage: Math.round(fundingPercentage),
+      investorCount: investorCount,
+      grossRentalYield: 8.5, // Example value
+      netRentalYield: 7.2, // Example value
+      annualisedReturn: parseFloat(row.pricing_expected_roi.replace('%', '')),
+      investmentRationale: [
+        "Prime location in growing area",
+        "Strong rental demand",
+        "Expected capital appreciation",
+        "Diversified investment portfolio"
+      ]
     };
 
     res.json({

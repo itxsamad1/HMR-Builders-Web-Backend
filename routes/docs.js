@@ -31,6 +31,7 @@ router.get('/', (req, res) => {
       },
       investments: {
         'GET /api/investments/my-investments': 'Get user investments',
+        'GET /api/investments/user/:userId': 'Get investments by user ID (mobile)',
         'GET /api/investments/:id': 'Get investment by ID',
         'POST /api/investments': 'Create new investment',
         'PATCH /api/investments/:id/status': 'Update investment status',
@@ -39,6 +40,8 @@ router.get('/', (req, res) => {
       },
       users: {
         'GET /api/users/profile': 'Get user profile',
+        'GET /api/users/profile/:userId': 'Get user profile by ID (mobile)',
+        'GET /api/users/wallet/:userId': 'Get user wallet by ID (mobile)',
         'PUT /api/users/profile': 'Update user profile',
         'PUT /api/users/change-password': 'Change password',
         'POST /api/users/kyc': 'Submit KYC documents',
@@ -52,6 +55,19 @@ router.get('/', (req, res) => {
         'GET /api/admin/properties': 'Get all properties',
         'GET /api/admin/investments': 'Get all investments',
         'GET /api/admin/analytics': 'Get analytics data'
+      },
+      portfolio: {
+        'GET /api/portfolio/:userId': 'Get user portfolio',
+        'GET /api/portfolio/summary/:userId': 'Get portfolio summary'
+      },
+      calculator: {
+        'POST /api/calculator/roi': 'Calculate ROI for investment',
+        'POST /api/calculator/investment': 'Calculate investment scenarios'
+      },
+      support: {
+        'POST /api/support/contact': 'Submit support request',
+        'GET /api/support/faq': 'Get FAQ list',
+        'GET /api/support/contact-info': 'Get contact information'
       }
     },
     authentication: {
