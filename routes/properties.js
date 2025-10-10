@@ -60,7 +60,7 @@ router.get('/', optionalAuth, async (req, res) => {
     const propertiesResult = await query(
       `SELECT 
         id, title, slug, short_description, location_address, location_city,
-        property_type, status, pricing_total_value, pricing_expected_roi,
+        property_type, status, pricing_total_value, pricing_expected_roi,pricing_min_investment,
         tokenization_total_tokens, tokenization_available_tokens,
         tokenization_price_per_token, images, is_featured, created_at
       FROM properties 
@@ -95,17 +95,24 @@ router.get('/', optionalAuth, async (req, res) => {
         title: row.title,
         slug: row.slug,
         location: row.location_address,
+        propertyType: row.property_type,
+        status: row.status,
+        pricing: {
+          totalValue: row.pricing_total_value,
+          expectedROI: row.pricing_expected_roi,
+          marketValue: row.pricing_market_value || row.pricing_total_value
+        },
         price: formatPrice(row.pricing_total_value),
         marketValue: formatPrice(row.pricing_market_value || row.pricing_total_value),
         appreciation: row.pricing_appreciation,
         roi: row.pricing_expected_roi,
         type: row.property_type,
         image: row.images?.thumbnail || (row.images?.gallery && row.images.gallery[0]) || null,
-        status: row.status,
         tokens: totalTokens,
         availableTokens: availableTokens,
-        minInvestment: formatPrice(row.pricing_min_investment),
+        minInvestment: parseFloat(row.pricing_min_investment),
         description: row.short_description,
+        shortDescription: row.short_description,
         features: row.features || [],
         fundingPercentage: Math.round(fundingPercentage),
         investorCount: Math.floor(soldTokens / 10) // Estimate based on tokens sold
@@ -136,29 +143,46 @@ router.get('/', optionalAuth, async (req, res) => {
 router.get('/featured', async (req, res) => {
   try {
     const result = await query(`
-      SELECT id, title, slug, short_description, images, pricing_total_value, 
-             pricing_expected_roi, tokenization_total_tokens, tokenization_available_tokens
+      SELECT id, title, slug, short_description, images, pricing_total_value, pricing_total_value,pricing_expected_roi,
+             pricing_expected_roi, tokenization_total_tokens, tokenization_available_tokens,pricing_min_investment
       FROM properties
       WHERE is_active = TRUE AND is_featured = TRUE
       ORDER BY sort_order ASC, created_at DESC
       LIMIT 6
     `);
 
-    const properties = result.rows.map(row => ({
-      id: row.id,
-      title: row.title,
-      slug: row.slug,
-      shortDescription: row.short_description,
-      images: row.images,
-      pricing: {
-        totalValue: row.pricing_total_value,
-        expectedROI: row.pricing_expected_roi
-      },
-      tokenization: {
-        totalTokens: row.tokenization_total_tokens,
-        availableTokens: row.tokenization_available_tokens
-      }
-    }));
+    const properties = result.rows.map(row => {
+      // Calculate funding percentage
+      const totalTokens = row.tokenization_total_tokens;
+      const availableTokens = row.tokenization_available_tokens;
+      const soldTokens = totalTokens - availableTokens;
+      const fundingPercentage = totalTokens > 0 ? (soldTokens / totalTokens) * 100 : 0;
+
+      return {
+        id: row.id,
+        title: row.title,
+        slug: row.slug,
+        shortDescription: row.short_description,
+        description: row.short_description,
+        images: row.images,
+        propertyType: 'residential', // Default type
+        status: 'active', // Default status
+        pricing: {
+          totalValue: row.pricing_total_value,
+          expectedROI: row.pricing_expected_roi,
+          marketValue: row.pricing_total_value
+        },
+        tokenization: {
+          totalTokens: totalTokens,
+          availableTokens: availableTokens
+        },
+        tokens: totalTokens,
+        availableTokens: availableTokens,
+        minInvestment: parseFloat(row.pricing_min_investment),
+        fundingPercentage: Math.round(fundingPercentage),
+        investorCount: Math.floor(soldTokens / 10)
+      };
+    });
 
     res.json({
       message: 'Featured properties retrieved successfully',
@@ -169,6 +193,67 @@ router.get('/featured', async (req, res) => {
     res.status(500).json({
       error: 'Failed to retrieve featured properties',
       message: 'Unable to fetch featured properties'
+    });
+  }
+});
+
+// Get available filter options
+router.get('/filter-options', async (req, res) => {
+  try {
+    // Get unique cities
+    const citiesResult = await query(`
+      SELECT DISTINCT location_city as city 
+      FROM properties 
+      WHERE is_active = TRUE 
+      ORDER BY location_city ASC
+    `);
+
+    // Get unique property types
+    const typesResult = await query(`
+      SELECT DISTINCT property_type as type 
+      FROM properties 
+      WHERE is_active = TRUE 
+      ORDER BY property_type ASC
+    `);
+
+    // Get unique statuses
+    const statusesResult = await query(`
+      SELECT DISTINCT status 
+      FROM properties 
+      WHERE is_active = TRUE 
+      ORDER BY status ASC
+    `);
+
+    const cities = citiesResult.rows.map(row => ({
+      value: row.city,
+      label: row.city
+    }));
+
+    const propertyTypes = typesResult.rows.map(row => ({
+      value: row.type,
+      label: row.type.charAt(0).toUpperCase() + row.type.slice(1).replace('-', ' ')
+    }));
+
+    const statuses = statusesResult.rows.map(row => ({
+      value: row.status,
+      label: row.status.charAt(0).toUpperCase() + row.status.slice(1).replace('-', ' ')
+    }));
+
+    res.json({
+      success: true,
+      data: {
+        cities: [{ value: '', label: 'All Cities' }, ...cities],
+        propertyTypes: [{ value: '', label: 'All Types' }, ...propertyTypes],
+        statuses: [{ value: '', label: 'All Status' }, ...statuses]
+      }
+    });
+
+  } catch (error) {
+    console.error('Get filter options error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to retrieve filter options',
+      message: error.message
     });
   }
 });
@@ -199,25 +284,19 @@ router.get('/:slug', optionalAuth, async (req, res) => {
     const fundingPercentage = totalTokens > 0 ? (soldTokens / totalTokens) * 100 : 0;
     const investorCount = Math.floor(soldTokens / 10); // Estimate
 
-    // Format prices
-    const formatPrice = (price) => {
-      const num = parseFloat(price);
-      if (num >= 1000000000) {
-        return `PKR ${(num / 1000000000).toFixed(1)}B`;
-      } else if (num >= 1000000) {
-        return `PKR ${(num / 1000000).toFixed(1)}M`;
-      } else if (num >= 1000) {
-        return `PKR ${(num / 1000).toFixed(0)}K`;
-      }
-      return `PKR ${num.toFixed(0)}`;
-    };
-
+   
     const property = {
       id: row.id,
       title: row.title,
       location: row.location_address,
       propertyType: row.property_type,
       status: row.status,
+      pricing: {
+        totalValue: parseFloat(row.pricing_total_value),
+        marketValue: parseFloat(row.pricing_market_value || row.pricing_total_value),
+        appreciation: parseFloat(row.pricing_appreciation.replace('%', '')),
+        expectedRoi: parseFloat(row.pricing_expected_roi.replace('%', ''))
+      },
       listingPriceMin: parseFloat(row.pricing_total_value),
       listingPriceMax: parseFloat(row.pricing_market_value || row.pricing_total_value),
       marketValueMin: parseFloat(row.pricing_market_value || row.pricing_total_value),

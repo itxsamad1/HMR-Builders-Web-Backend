@@ -10,7 +10,7 @@ const api = axios.create({
   },
 });
 
-// Request interceptor (no auth needed)
+// Request interceptor (no auth needed for demo)
 api.interceptors.request.use(
   (config) => {
     return config;
@@ -46,6 +46,7 @@ export const propertiesAPI = {
   getBySlug: (slug) => api.get(`/properties/slug/${slug}`),
   getById: (id) => api.get(`/properties/${id}`),
   getStats: (id) => api.get(`/properties/${id}/stats`),
+  getFilterOptions: () => api.get('/properties/filter-options'),
   create: (propertyData) => api.post('/properties', propertyData),
   update: (id, propertyData) => api.put(`/properties/${id}`, propertyData),
   delete: (id) => api.delete(`/properties/${id}`),
@@ -75,11 +76,13 @@ export const usersAPI = {
   getWallet: () => api.get('/users/wallet'),
   getWalletById: (userId) => api.get(`/users/wallet/${userId}`),
   getHoldings: () => api.get('/users/holdings'),
+  getAllUsers: () => api.get('/users/all'),
 };
 
 // Payment Methods API
 export const paymentMethodsAPI = {
   getAll: () => api.get('/payment-methods'),
+  getByUserId: (userId) => api.get(`/payment-methods/user/${userId}`),
   create: (paymentData) => api.post('/payment-methods', paymentData),
   setDefault: (id) => api.put(`/payment-methods/${id}/default`),
   delete: (id) => api.delete(`/payment-methods/${id}`),
@@ -110,6 +113,8 @@ export const adminAPI = {
 export const portfolioAPI = {
   getPortfolio: (userId) => api.get(`/portfolio/${userId}`),
   getSummary: (userId) => api.get(`/portfolio/summary/${userId}`),
+  getStats: (userId) => api.get(`/portfolio/stats/${userId}`),
+  updateStats: (userId, statsData) => api.put(`/portfolio/stats/${userId}`, statsData),
 };
 
 // Calculator API (Mobile Optimized)

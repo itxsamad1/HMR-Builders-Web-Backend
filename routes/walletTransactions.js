@@ -74,8 +74,14 @@ router.get('/user/:userId', async (req, res) => {
 // Create wallet deposit (top-up)
 router.post('/deposit', async (req, res) => {
   try {
-    const userId = 'a6702919-c381-4ebe-881a-4c3045d5f551'; // Hardcoded for demo
-    const { amount, currency = 'PKR', paymentMethodId, description } = req.body;
+    const { userId, amount, currency = 'PKR', paymentMethodId, description } = req.body;
+    
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        error: 'User ID is required'
+      });
+    }
     
     // Validate input
     if (!amount || amount <= 0) {
@@ -200,8 +206,14 @@ router.post('/deposit', async (req, res) => {
 // Create wallet withdrawal
 router.post('/withdrawal', async (req, res) => {
   try {
-    const userId = 'a6702919-c381-4ebe-881a-4c3045d5f551'; // Hardcoded for demo
-    const { amount, currency = 'PKR', paymentMethodId, description } = req.body;
+    const { userId, amount, currency = 'PKR', paymentMethodId, description } = req.body;
+    
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        error: 'User ID is required'
+      });
+    }
     
     // Validate input
     if (!amount || amount <= 0) {

@@ -4,9 +4,11 @@ import { MapPin, TrendingUp, Coins, Users } from 'lucide-react';
 import Card from './ui/Card';
 import Badge from './ui/Badge';
 import Button from './ui/Button';
-import { formatLocation, formatCurrency, getPropertyImage } from '../utils/formatLocation';
+import { formatLocation, formatPrice, formatCurrency, getPropertyImage } from '../utils/formatLocation';
 
 const PropertyCard = ({ property, onInvest }) => {
+  // Debug: Log the property data
+  console.log('PropertyCard received property:', property);
 
   const getStatusBadge = (status) => {
     const statusMap = {
@@ -51,8 +53,8 @@ const PropertyCard = ({ property, onInvest }) => {
         )}
         <div className="absolute top-2 left-2 flex gap-2">
           {getStatusBadge(property.status)}
-          <Badge className={getPropertyTypeColor(property.propertyType)}>
-            {property.propertyType}
+          <Badge className={getPropertyTypeColor(property.propertyType || property.type)}>
+            {property.propertyType || property.type || 'Property'}
           </Badge>
         </div>
         {property.isFeatured && (
@@ -80,13 +82,21 @@ const PropertyCard = ({ property, onInvest }) => {
           <div>
             <p className="text-sm text-gray-500">Total Value</p>
             <p className="font-semibold text-lg">
-              {formatCurrency(property.price || 0)}
+              {(() => {
+                const price = property.price || property.pricing?.totalValue || 'N/A';
+                console.log('Price value:', price, 'Type:', typeof price);
+                return formatPrice(price);
+              })()}
             </p>
           </div>
           <div>
             <p className="text-sm text-gray-500">Expected ROI</p>
             <p className="font-semibold text-lg text-green-600">
-              {property.roi || 'N/A'}
+              {(() => {
+                const roi = property.roi || property.pricing?.expectedROI || 'N/A';
+                console.log('ROI value:', roi, 'Type:', typeof roi);
+                return roi === 'N/A' ? roi : `${roi}%`;
+              })()}
             </p>
           </div>
         </div>
@@ -114,7 +124,7 @@ const PropertyCard = ({ property, onInvest }) => {
             <span className="text-gray-500">Min Investment</span>
           </div>
           <div className="text-right font-medium">
-            {formatCurrency(property.minInvestment || 0)}
+            {formatCurrency(property.minInvestment || property.pricing?.minInvestment || 'N/A')} PKR
           </div>
         </div>
 
@@ -128,7 +138,7 @@ const PropertyCard = ({ property, onInvest }) => {
             >
               View Details
             </Button>
-            {property.status === 'active' && property.availableTokens > 0 && (
+            {property.status === 'active' && (property.availableTokens > 0 || property.tokenization?.availableTokens > 0) && (
               <Button
                 className="flex-1"
                 onClick={() => onInvest && onInvest(property)}

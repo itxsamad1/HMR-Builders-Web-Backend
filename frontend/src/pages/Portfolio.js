@@ -41,6 +41,18 @@ const Portfolio = () => {
     }
   );
 
+  // Fetch user stats (same as Dashboard)
+  const { data: statsData, isLoading: statsLoading, refetch: refetchStats } = useQuery(
+    ['portfolio-stats', userId],
+    () => portfolioAPI.getStats(userId),
+    { 
+      enabled: !!userId,
+      staleTime: 0, // Always fetch fresh data
+      cacheTime: 0, // Don't cache the data
+      refetchOnWindowFocus: true // Refetch when window gains focus
+    }
+  );
+
   // Fetch user profile for additional data
   const { data: profileData } = useQuery(
     ['user-profile', userId],
@@ -53,6 +65,7 @@ const Portfolio = () => {
   const portfolio = portfolioData?.data?.data || {};
   const summary = summaryData?.data?.data || {};
   const profile = profileData?.data?.data || {};
+  const userStats = statsData?.data?.data || statsData?.data || {};
 
   // Debug logging
   console.log('Portfolio - Portfolio data:', portfolio);
@@ -60,7 +73,7 @@ const Portfolio = () => {
   console.log('Portfolio - Profile data:', profile);
 
 
-  if (portfolioLoading || summaryLoading) {
+  if (portfolioLoading || summaryLoading || statsLoading) { 
     return (
       <Layout>
         <div className="min-h-screen bg-gray-50 py-8">
@@ -89,11 +102,20 @@ const Portfolio = () => {
       <div className="min-h-screen bg-gray-50 py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">My Portfolio</h1>
-            <p className="text-gray-600">
-              Track your real estate investments and returns
-            </p>
+          <div className="mb-8 flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">My Portfolio</h1>
+              <p className="text-gray-600">
+                Track your real estate investments and returns
+              </p>
+            </div>
+            <Button 
+              onClick={() => refetchStats()} 
+              variant="outline"
+              className="ml-4"
+            >
+              Refresh Stats
+            </Button>
           </div>
 
           {/* Summary Cards */}
@@ -103,7 +125,7 @@ const Portfolio = () => {
                 <div>
                   <p className="text-sm font-medium text-gray-600">Total Investment</p>
                   <p className="text-2xl font-bold text-gray-900">
-                    {formatCurrency(summary.totalInvestment || 0)}
+                    {formatCurrency(userStats.totalInvestment || summary.totalInvestment || 0)}
                   </p>
                 </div>
                 <div className="p-3 bg-blue-100 rounded-full">
@@ -117,7 +139,7 @@ const Portfolio = () => {
                 <div>
                   <p className="text-sm font-medium text-gray-600">Current Value</p>
                   <p className="text-2xl font-bold text-gray-900">
-                    {formatCurrency(summary.currentValue || 0)}
+                    {formatCurrency(userStats.currentValue || summary.currentValue || 0)}
                   </p>
                 </div>
                 <div className="p-3 bg-green-100 rounded-full">
@@ -131,7 +153,7 @@ const Portfolio = () => {
                 <div>
                   <p className="text-sm font-medium text-gray-600">Total ROI</p>
                   <p className="text-2xl font-bold text-green-600">
-                    {formatPercentage(summary.totalROI || 0)}
+                    {formatPercentage(userStats.totalROI || summary.totalROI || 0)}
                   </p>
                 </div>
                 <div className="p-3 bg-purple-100 rounded-full">
@@ -180,25 +202,32 @@ const Portfolio = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <Card className="p-4 text-center">
                   <Coins className="w-8 h-8 text-blue-600 mx-auto mb-2" />
-                  <p className="text-2xl font-bold text-gray-900">{summary.totalTokens || 0}</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {userStats.totalTokens || summary.totalTokens || portfolio.totalTokens || 0}
+                  </p>
                   <p className="text-sm text-gray-600">Total Tokens</p>
                 </Card>
                 <Card className="p-4 text-center">
                   <Building2 className="w-8 h-8 text-green-600 mx-auto mb-2" />
-                  <p className="text-2xl font-bold text-gray-900">{portfolio.investments?.length || 0}</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {userStats.activeInvestments || portfolio.investments?.length || 0}
+                  </p>
                   <p className="text-sm text-gray-600">Properties</p>
                 </Card>
                 <Card className="p-4 text-center">
                   <ArrowUpRight className="w-8 h-8 text-purple-600 mx-auto mb-2" />
                   <p className="text-2xl font-bold text-gray-900">
-                    {formatPercentage(summary.totalROI || 0)}
+                    {formatPercentage(userStats.totalROI || summary.totalROI || 0)}
                   </p>
                   <p className="text-sm text-gray-600">Average ROI</p>
                 </Card>
                 <Card className="p-4 text-center">
                   <DollarSign className="w-8 h-8 text-orange-600 mx-auto mb-2" />
                   <p className="text-2xl font-bold text-gray-900">
-                    {formatCurrency((summary.currentValue || 0) - (summary.totalInvestment || 0))}
+                    {formatCurrency(
+                      (userStats.currentValue || summary.currentValue || 0) - 
+                      (userStats.totalInvestment || summary.totalInvestment || 0)
+                    )}
                   </p>
                   <p className="text-sm text-gray-600">Total Gains</p>
                 </Card>

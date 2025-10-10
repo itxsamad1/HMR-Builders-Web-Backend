@@ -57,7 +57,7 @@ const detectCardType = (cardNumber) => {
   return null;
 };
 
-// Get user's payment methods (no auth required)
+// Get user's payment methods (no auth required for demo)
 router.get('/', async (req, res) => {
   try {
     // For demo purposes, use the first user from database
@@ -77,7 +77,31 @@ router.get('/', async (req, res) => {
     res.status(500).json({ 
       success: false, 
       error: 'Failed to fetch payment methods',
-      message: error.message 
+      message: error.message
+    });
+  }
+});
+
+// Get payment methods by user ID
+router.get('/user/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    const result = await query(
+      'SELECT id, card_type, card_number_masked, card_holder_name, expiry_month, expiry_year, currency, is_default, is_verified, status, created_at FROM payment_methods WHERE user_id = $1 AND status = $2 ORDER BY is_default DESC, created_at DESC',
+      [userId, 'active']
+    );
+    
+    res.json({
+      success: true,
+      data: result.rows
+    });
+  } catch (error) {
+    console.error('Get payment methods by user error:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to fetch payment methods',
+      message: error.message
     });
   }
 });

@@ -32,6 +32,15 @@ const Properties = () => {
     }
   );
 
+  // Fetch filter options from database
+  const { data: filterOptionsData } = useQuery(
+    'property-filter-options',
+    () => propertiesAPI.getFilterOptions(),
+    {
+      staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    }
+  );
+
   // Handle both old and new API response formats
   const properties = data?.data?.properties || data?.properties || [];
   const pagination = data?.data?.pagination || data?.pagination || {};
@@ -60,23 +69,26 @@ const Properties = () => {
     setCurrentPage(1);
   };
 
-  const statusOptions = [
+  // Get filter options from database or use fallbacks
+  const filterOptions = filterOptionsData?.data?.data || {};
+  const statusOptions = filterOptions.statuses || [
     { value: '', label: 'All Status' },
+    { value: 'planning', label: 'Planning' },
     { value: 'coming-soon', label: 'Coming Soon' },
-    { value: 'active', label: 'Active' },
     { value: 'construction', label: 'Under Construction' },
+    { value: 'active', label: 'Active' },
     { value: 'sold-out', label: 'Sold Out' },
     { value: 'completed', label: 'Completed' },
   ];
 
-  const propertyTypeOptions = [
+  const propertyTypeOptions = filterOptions.propertyTypes || [
     { value: '', label: 'All Types' },
     { value: 'residential', label: 'Residential' },
     { value: 'commercial', label: 'Commercial' },
     { value: 'mixed-use', label: 'Mixed Use' },
   ];
 
-  const cityOptions = [
+  const cityOptions = filterOptions.cities || [
     { value: '', label: 'All Cities' },
     { value: 'Karachi', label: 'Karachi' },
     { value: 'Lahore', label: 'Lahore' },

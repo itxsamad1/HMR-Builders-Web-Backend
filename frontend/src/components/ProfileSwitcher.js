@@ -1,16 +1,26 @@
 import React, { useState } from 'react';
 import { useUser } from '../contexts/UserContext';
-import { User, ChevronDown, Check } from 'lucide-react';
+import { User, ChevronDown, Check, RefreshCw } from 'lucide-react';
 import Button from './ui/Button';
 import Card from './ui/Card';
 
 const ProfileSwitcher = () => {
-  const { currentUser, switchUser, users } = useUser();
+  const { currentUser, switchUser, users, loading, refreshUsers } = useUser();
   const [isOpen, setIsOpen] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const handleUserSwitch = (userId) => {
     switchUser(userId);
     setIsOpen(false);
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await refreshUsers();
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   return (
@@ -29,10 +39,30 @@ const ProfileSwitcher = () => {
         <div className="absolute top-full right-0 mt-2 w-64 z-50">
           <Card className="p-4 shadow-lg">
             <div className="space-y-2">
-              <h3 className="font-semibold text-sm text-gray-700 mb-3">
-                Switch Profile
-              </h3>
-              {users.map((user) => (
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-semibold text-sm text-gray-700">
+                  Switch Profile
+                </h3>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleRefresh}
+                  disabled={refreshing}
+                  className="p-1 h-6 w-6"
+                >
+                  <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} />
+                </Button>
+              </div>
+              {loading ? (
+                <div className="text-center py-4 text-sm text-gray-500">
+                  Loading users...
+                </div>
+              ) : users.length === 0 ? (
+                <div className="text-center py-4 text-sm text-gray-500">
+                  No users found
+                </div>
+              ) : (
+                users.map((user) => (
                 <button
                   key={user.id}
                   onClick={() => handleUserSwitch(user.id)}
@@ -69,7 +99,8 @@ const ProfileSwitcher = () => {
                     <Check className="w-4 h-4 text-blue-600" />
                   )}
                 </button>
-              ))}
+                ))
+              )}
             </div>
           </Card>
         </div>

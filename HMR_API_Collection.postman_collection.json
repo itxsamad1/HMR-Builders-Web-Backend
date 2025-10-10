@@ -1,0 +1,371 @@
+{
+  "info": {
+    "name": "HMR Builders API Collection",
+    "description": "Complete API collection for HMR Builders Real Estate Tokenization Platform",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3001/api",
+      "type": "string"
+    },
+    {
+      "key": "userId",
+      "value": "a6702919-c381-4ebe-881a-4c3045d5f551",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Properties",
+      "item": [
+        {
+          "name": "Get All Properties",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/properties?page=1&limit=12&status=active",
+              "host": ["{{baseUrl}}"],
+              "path": ["properties"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "12"
+                },
+                {
+                  "key": "status",
+                  "value": "active"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Featured Properties",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/properties/featured",
+              "host": ["{{baseUrl}}"],
+              "path": ["properties", "featured"]
+            }
+          }
+        },
+        {
+          "name": "Get Property by ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/properties/539c2417-0491-4a16-aea4-37a751477613",
+              "host": ["{{baseUrl}}"],
+              "path": ["properties", "539c2417-0491-4a16-aea4-37a751477613"]
+            }
+          }
+        },
+        {
+          "name": "Get Filter Options",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/properties/filter-options",
+              "host": ["{{baseUrl}}"],
+              "path": ["properties", "filter-options"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "User Management",
+      "item": [
+        {
+          "name": "Get User Profile",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/users/profile/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "profile", "{{userId}}"]
+            }
+          }
+        },
+        {
+          "name": "Get User Wallet",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/users/wallet/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "wallet", "{{userId}}"]
+            }
+          }
+        },
+        {
+          "name": "Get All Users",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/users/all",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "all"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Portfolio",
+      "item": [
+        {
+          "name": "Get Portfolio Stats",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/portfolio/stats/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["portfolio", "stats", "{{userId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Investments",
+      "item": [
+        {
+          "name": "Get User Investments",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/investments/user/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["investments", "user", "{{userId}}"]
+            }
+          }
+        },
+        {
+          "name": "Create Investment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"propertyId\": \"539c2417-0491-4a16-aea4-37a751477613\",\n  \"investmentAmount\": 50000,\n  \"paymentMethodId\": \"8b63621d-c8da-498a-af89-ee2afd04d1a2\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/investments",
+              "host": ["{{baseUrl}}"],
+              "path": ["investments"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Wallet Transactions",
+      "item": [
+        {
+          "name": "Get User Transactions",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/wallet-transactions/user/{{userId}}?limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["wallet-transactions", "user", "{{userId}}"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Deposit Funds",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"amount\": 10000,\n  \"currency\": \"PKR\",\n  \"paymentMethodId\": \"8b63621d-c8da-498a-af89-ee2afd04d1a2\",\n  \"description\": \"Wallet top-up\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/wallet-transactions/deposit",
+              "host": ["{{baseUrl}}"],
+              "path": ["wallet-transactions", "deposit"]
+            }
+          }
+        },
+        {
+          "name": "Withdraw Funds",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"amount\": 5000,\n  \"currency\": \"PKR\",\n  \"paymentMethodId\": \"8b63621d-c8da-498a-af89-ee2afd04d1a2\",\n  \"description\": \"Wallet withdrawal\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/wallet-transactions/withdrawal",
+              "host": ["{{baseUrl}}"],
+              "path": ["wallet-transactions", "withdrawal"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Payment Methods",
+      "item": [
+        {
+          "name": "Get User Payment Methods",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/payment-methods/user/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["payment-methods", "user", "{{userId}}"]
+            }
+          }
+        },
+        {
+          "name": "Get All Payment Methods",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/payment-methods",
+              "host": ["{{baseUrl}}"],
+              "path": ["payment-methods"]
+            }
+          }
+        },
+        {
+          "name": "Add Payment Method",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cardType\": \"visa\",\n  \"cardNumber\": \"4111111111111111\",\n  \"cardHolderName\": \"John Doe\",\n  \"expiryMonth\": 12,\n  \"expiryYear\": 2026,\n  \"cvv\": \"123\",\n  \"billingAddress\": {\n    \"street\": \"123 Main St\",\n    \"city\": \"New York\",\n    \"state\": \"NY\",\n    \"country\": \"USA\",\n    \"postalCode\": \"10001\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payment-methods",
+              "host": ["{{baseUrl}}"],
+              "path": ["payment-methods"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Calculator",
+      "item": [
+        {
+          "name": "Calculate ROI",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"propertyId\": \"539c2417-0491-4a16-aea4-37a751477613\",\n  \"investmentAmount\": 50000\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/calculator/roi",
+              "host": ["{{baseUrl}}"],
+              "path": ["calculator", "roi"]
+            }
+          }
+        },
+        {
+          "name": "Calculate Investment Scenarios",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"propertyId\": \"539c2417-0491-4a16-aea4-37a751477613\",\n  \"investmentAmounts\": [10000, 25000, 50000, 100000]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/calculator/investment",
+              "host": ["{{baseUrl}}"],
+              "path": ["calculator", "investment"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Support",
+      "item": [
+        {
+          "name": "Submit Support Request",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"technical\",\n  \"subject\": \"Login Issue\",\n  \"message\": \"I'm having trouble logging in to my account\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/support/contact",
+              "host": ["{{baseUrl}}"],
+              "path": ["support", "contact"]
+            }
+          }
+        },
+        {
+          "name": "Get FAQ",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/support/faq",
+              "host": ["{{baseUrl}}"],
+              "path": ["support", "faq"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

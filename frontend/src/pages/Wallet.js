@@ -25,6 +25,7 @@ const Wallet = () => {
   const userId = currentUser.id;
   const [showDepositModal, setShowDepositModal] = useState(false);
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+  const [showAddPaymentModal, setShowAddPaymentModal] = useState(false);
   const [filter, setFilter] = useState('all');
   const queryClient = useQueryClient();
 
@@ -71,8 +72,8 @@ const Wallet = () => {
 
   // Fetch payment methods
   const { data: paymentMethodsData, isLoading: paymentMethodsLoading } = useQuery(
-    'paymentMethods',
-    () => paymentMethodsAPI.getAll(),
+    ['paymentMethods', userId],
+    () => paymentMethodsAPI.getByUserId(userId),
     { enabled: !!userId }
   );
 
@@ -92,6 +93,15 @@ const Wallet = () => {
       queryClient.invalidateQueries(['wallet-balance', userId]);
       queryClient.invalidateQueries(['wallet-transactions', userId]);
       setShowWithdrawModal(false);
+      reset();
+    },
+  });
+
+  // Add payment method mutation
+  const addPaymentMethodMutation = useMutation(paymentMethodsAPI.create, {
+    onSuccess: () => {
+      queryClient.invalidateQueries('paymentMethods');
+      setShowAddPaymentModal(false);
       reset();
     },
   });
@@ -159,6 +169,7 @@ const Wallet = () => {
     }
     
     depositMutation.mutate({
+      userId: userId,
       amount: parseFloat(data.amount),
       paymentMethodId: data.paymentMethodId,
     });
@@ -176,6 +187,7 @@ const Wallet = () => {
     }
     
     withdrawMutation.mutate({
+      userId: userId,
       amount: parseFloat(data.amount),
       paymentMethodId: data.paymentMethodId,
     });
