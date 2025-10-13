@@ -62,7 +62,9 @@ router.get('/', optionalAuth, async (req, res) => {
         id, title, slug, short_description, location_address, location_city,
         property_type, status, pricing_total_value, pricing_expected_roi,
         tokenization_total_tokens, tokenization_available_tokens,
-        tokenization_price_per_token, images, is_featured, created_at
+        tokenization_price_per_token, images, is_featured, created_at,
+        bedrooms, bathrooms, area_sqm, is_rented, appreciation_percentage,
+        amenities, documents, property_features, listing_price_formatted
       FROM properties 
       ${whereClause}
       ORDER BY sort_order ASC, created_at DESC
@@ -100,7 +102,7 @@ router.get('/', optionalAuth, async (req, res) => {
         appreciation: row.pricing_appreciation,
         roi: row.pricing_expected_roi,
         type: row.property_type,
-        image: row.images?.thumbnail || (row.images?.gallery && row.images.gallery[0]) || null,
+        image: row.images?.cover || (row.images?.gallery && row.images.gallery[0]) || 'https://images.unsplash.com/photo-1501183638710-841dd1904471',
         status: row.status,
         tokens: totalTokens,
         availableTokens: availableTokens,
@@ -108,7 +110,18 @@ router.get('/', optionalAuth, async (req, res) => {
         description: row.short_description,
         features: row.features || [],
         fundingPercentage: Math.round(fundingPercentage),
-        investorCount: Math.floor(soldTokens / 10) // Estimate based on tokens sold
+        investorCount: Math.floor(soldTokens / 10), // Estimate based on tokens sold
+        // New fields from database
+        bedrooms: row.bedrooms,
+        bathrooms: row.bathrooms,
+        area: row.area_sqm,
+        rented: row.is_rented,
+        appreciation: row.appreciation_percentage + '%',
+        listingPrice: row.listing_price_formatted,
+        // Additional database fields
+        amenities: row.amenities || [],
+        documents: row.documents || [],
+        propertyFeatures: row.property_features || []
       };
     });
 
@@ -169,6 +182,89 @@ router.get('/featured', async (req, res) => {
     res.status(500).json({
       error: 'Failed to retrieve featured properties',
       message: 'Unable to fetch featured properties'
+    });
+  }
+});
+
+// Get property by ID
+router.get('/id/:id', optionalAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await query(
+      'SELECT * FROM properties WHERE id = $1 AND is_active = TRUE',
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        error: 'Property not found',
+        message: 'The requested property does not exist'
+      });
+    }
+
+    const row = result.rows[0];
+    
+    // Calculate funding percentage and investor count
+    const totalTokens = row.tokenization_total_tokens;
+    const availableTokens = row.tokenization_available_tokens;
+    const soldTokens = totalTokens - availableTokens;
+    const fundingPercentage = totalTokens > 0 ? (soldTokens / totalTokens) * 100 : 0;
+    const investorCount = Math.floor(soldTokens / 10); // Estimate
+
+    // Format prices
+    const formatPrice = (price) => {
+      const num = parseFloat(price);
+      if (num >= 1000000000) {
+        return `PKR ${(num / 1000000000).toFixed(1)}B`;
+      } else if (num >= 1000000) {
+        return `PKR ${(num / 1000000).toFixed(1)}M`;
+      } else if (num >= 1000) {
+        return `PKR ${(num / 1000).toFixed(1)}K`;
+      }
+      return `PKR ${num.toFixed(0)}`;
+    };
+
+    const property = {
+      id: row.id,
+      title: row.title,
+      slug: row.slug,
+      location: row.location_full,
+      price: formatPrice(row.pricing_total_value),
+      marketValue: formatPrice(row.pricing_total_value * 1.2), // 20% appreciation
+      roi: row.pricing_expected_roi,
+      type: row.property_type,
+      image: row.images?.cover || (row.images?.gallery && row.images.gallery[0]) || 'https://images.unsplash.com/photo-1501183638710-841dd1904471',
+      status: row.status,
+      tokens: row.tokenization_total_tokens,
+      availableTokens: row.tokenization_available_tokens,
+      minInvestment: formatPrice(row.pricing_total_value / row.tokenization_total_tokens),
+      description: row.short_description || row.long_description,
+      features: row.amenities || [],
+      fundingPercentage: Math.round(fundingPercentage),
+      investorCount,
+      // New fields from database
+      bedrooms: row.bedrooms,
+      bathrooms: row.bathrooms,
+      area: row.area_sqm,
+      rented: row.is_rented,
+      appreciation: row.appreciation_percentage + '%',
+      listingPrice: row.listing_price_formatted,
+      // Additional database fields
+      amenities: row.amenities || [],
+      documents: row.documents || [],
+      propertyFeatures: row.property_features || []
+    };
+
+    res.json({
+      message: 'Property retrieved successfully',
+      property
+    });
+  } catch (error) {
+    console.error('Get property by ID error:', error);
+    res.status(500).json({
+      error: 'Failed to retrieve property',
+      message: 'Unable to fetch property details'
     });
   }
 });
