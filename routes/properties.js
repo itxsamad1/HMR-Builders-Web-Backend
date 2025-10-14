@@ -61,7 +61,7 @@ router.get('/', optionalAuth, async (req, res) => {
       `SELECT 
         id, title, slug, short_description, location_address, location_city,
         property_type, status, pricing_total_value, pricing_expected_roi,
-        tokenization_total_tokens, tokenization_available_tokens,
+        pricing_min_investment, tokenization_total_tokens, tokenization_available_tokens,
         tokenization_price_per_token, images, is_featured, created_at,
         bedrooms, bathrooms, area_sqm, is_rented, appreciation_percentage,
         amenities, documents, property_features, listing_price_formatted
@@ -150,28 +150,44 @@ router.get('/featured', async (req, res) => {
   try {
     const result = await query(`
       SELECT id, title, slug, short_description, images, pricing_total_value, 
-             pricing_expected_roi, tokenization_total_tokens, tokenization_available_tokens
+             pricing_expected_roi, pricing_min_investment, tokenization_total_tokens, tokenization_available_tokens
       FROM properties
       WHERE is_active = TRUE AND is_featured = TRUE
       ORDER BY sort_order ASC, created_at DESC
       LIMIT 6
     `);
 
-    const properties = result.rows.map(row => ({
-      id: row.id,
-      title: row.title,
-      slug: row.slug,
-      shortDescription: row.short_description,
-      images: row.images,
-      pricing: {
-        totalValue: row.pricing_total_value,
-        expectedROI: row.pricing_expected_roi
-      },
-      tokenization: {
-        totalTokens: row.tokenization_total_tokens,
-        availableTokens: row.tokenization_available_tokens
-      }
-    }));
+    const properties = result.rows.map(row => {
+      // Format price for display
+      const formatPrice = (price) => {
+        const num = parseFloat(price);
+        if (num >= 1000000000) {
+          return `PKR ${(num / 1000000000).toFixed(1)}B`;
+        } else if (num >= 1000000) {
+          return `PKR ${(num / 1000000).toFixed(1)}M`;
+        } else if (num >= 1000) {
+          return `PKR ${(num / 1000).toFixed(0)}K`;
+        }
+        return `PKR ${num.toFixed(0)}`;
+      };
+
+      return {
+        id: row.id,
+        title: row.title,
+        slug: row.slug,
+        shortDescription: row.short_description,
+        images: row.images,
+        pricing: {
+          totalValue: row.pricing_total_value,
+          expectedROI: row.pricing_expected_roi,
+          minInvestment: formatPrice(row.pricing_min_investment)
+        },
+        tokenization: {
+          totalTokens: row.tokenization_total_tokens,
+          availableTokens: row.tokenization_available_tokens
+        }
+      };
+    });
 
     res.json({
       message: 'Featured properties retrieved successfully',
