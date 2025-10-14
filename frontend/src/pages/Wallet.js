@@ -19,13 +19,17 @@ import Input from '../components/ui/Input';
 import { useUser } from '../contexts/UserContext';
 import { walletTransactionsAPI, paymentMethodsAPI, usersAPI } from '../services/api';
 import { formatCurrency } from '../utils/formatLocation';
+import BuyTokens from '../components/BuyTokens';
+import OnChainDeposit from '../components/OnChainDeposit';
 
 const Wallet = () => {
   const { currentUser } = useUser();
   const userId = currentUser.id;
   const [showDepositModal, setShowDepositModal] = useState(false);
+  const [showOnChainDepositModal, setShowOnChainDepositModal] = useState(false);
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [showAddPaymentModal, setShowAddPaymentModal] = useState(false);
+  const [showBuyTokens, setShowBuyTokens] = useState(false);
   const [filter, setFilter] = useState('all');
   const queryClient = useQueryClient();
 
@@ -261,15 +265,34 @@ const Wallet = () => {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex gap-4 mb-8">
-            <Button onClick={() => setShowDepositModal(true)} className="flex-1">
-              <Plus className="h-4 w-4 mr-2" />
-              Deposit Funds
-            </Button>
-            <Button onClick={() => setShowWithdrawModal(true)} variant="outline" className="flex-1">
-              <Minus className="h-4 w-4 mr-2" />
-              Withdraw Funds
-            </Button>
+          <div className="space-y-4 mb-8">
+            {/* Primary Actions */}
+            <div className="flex gap-4">
+              <Button onClick={() => setShowDepositModal(true)} className="flex-1">
+                <Plus className="h-4 w-4 mr-2" />
+                Debit Card Deposit
+              </Button>
+              <Button onClick={() => setShowOnChainDepositModal(true)} className="flex-1 bg-purple-600 hover:bg-purple-700">
+                <WalletIcon className="h-4 w-4 mr-2" />
+                On-Chain & Third-Party
+              </Button>
+              <Button onClick={() => setShowWithdrawModal(true)} variant="outline" className="flex-1">
+                <Minus className="h-4 w-4 mr-2" />
+                Withdraw Funds
+              </Button>
+            </div>
+            
+            {/* Secondary Actions */}
+            <div className="flex gap-4">
+              <Button onClick={() => setShowBuyTokens(true)} className="flex-1 bg-green-600 hover:bg-green-700">
+                <WalletIcon className="h-4 w-4 mr-2" />
+                Buy Tokens
+              </Button>
+              <Button onClick={() => setShowAddPaymentModal(true)} variant="outline" className="flex-1">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Payment Method
+              </Button>
+            </div>
           </div>
 
           {/* Transaction History */}
@@ -296,9 +319,22 @@ const Wallet = () => {
               <div className="space-y-4">
                 {filteredTransactions.map((transaction) => {
                   const IconComponent = getTransactionIcon(transaction.transaction_type, transaction.status);
-                  const getTransactionLabel = (transactionType) => {
+                  const getTransactionLabel = (transactionType, metadata) => {
+                    // Parse metadata to get provider info
+                    let provider = '';
+                    try {
+                      if (metadata) {
+                        const meta = JSON.parse(metadata);
+                        provider = meta.provider || '';
+                      }
+                    } catch (e) {
+                      // Ignore parsing errors
+                    }
+
                     switch (transactionType) {
-                      case 'deposit': return 'Deposit';
+                      case 'deposit': 
+                        if (provider === 'binance') return 'Binance Pay Deposit';
+                        return 'Deposit';
                       case 'withdrawal': return 'Withdrawal';
                       case 'investment': return 'Investment';
                       case 'return': return 'Dividend';
@@ -311,7 +347,7 @@ const Wallet = () => {
                         <IconComponent className={`h-5 w-5 mr-3 ${getTransactionColor(transaction.transaction_type, transaction.status)}`} />
                         <div>
                           <p className="text-sm font-medium text-gray-900">
-                            {getTransactionLabel(transaction.transaction_type)}
+                            {getTransactionLabel(transaction.transaction_type, transaction.metadata)}
                           </p>
                           <p className="text-xs text-gray-500">
                             {transaction.description}
@@ -446,6 +482,51 @@ const Wallet = () => {
                   
                 </form>
               </Card>
+            </div>
+          )}
+
+          {/* On-Chain & Third-Party Deposit Modal */}
+          {showOnChainDepositModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="w-full max-w-2xl p-4">
+                <OnChainDeposit
+                  userId={userId}
+                  onDepositSuccess={(data) => {
+                    queryClient.invalidateQueries(['wallet-balance', userId]);
+                    queryClient.invalidateQueries(['wallet-transactions', userId]);
+                    setShowOnChainDepositModal(false);
+                  }}
+                  onClose={() => setShowOnChainDepositModal(false)}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Buy Tokens Modal */}
+          {showBuyTokens && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="w-full max-w-4xl p-4">
+                <Card className="max-h-[90vh] overflow-y-auto">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-semibold text-gray-900">Buy Property Tokens</h3>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setShowBuyTokens(false)}
+                      className="text-gray-500 hover:text-gray-700"
+                    >
+                      ✕
+                    </Button>
+                  </div>
+                  <BuyTokens 
+                    userId={userId} 
+                    onPurchaseSuccess={(data) => {
+                      queryClient.invalidateQueries(['wallet-balance', userId]);
+                      queryClient.invalidateQueries(['wallet-transactions', userId]);
+                      setShowBuyTokens(false);
+                    }}
+                  />
+                </Card>
+              </div>
             </div>
           )}
         </div>

@@ -98,6 +98,9 @@ export const walletTransactionsAPI = {
   getById: (id) => api.get(`/wallet-transactions/${id}`),
   getBalance: () => api.get('/wallet-transactions/balance/current'),
   getByUserId: (userId, params) => api.get(`/wallet-transactions/user/${userId}`, { params }),
+  // New on-chain and third-party deposit methods
+  createOnChainDeposit: (data) => api.post('/wallet-transactions/deposit', { ...data, type: 'onchain' }),
+  createThirdPartyDeposit: (data) => api.post('/wallet-transactions/deposit', { ...data, type: 'thirdparty' }),
 };
 
 // Admin API (Complete)
@@ -128,6 +131,15 @@ export const supportAPI = {
   submitContact: (data) => api.post('/support/contact', data),
   getFAQ: () => api.get('/support/faq'),
   getContactInfo: () => api.get('/support/contact-info'),
+};
+
+// Wallet API (Token Purchase & Management)
+export const walletAPI = {
+  buyTokens: (data) => api.post('/wallet/buy-tokens', data),
+  getHoldings: (userId) => api.get(`/wallet/holdings/${userId}`),
+  getHistory: (userId, params) => api.get(`/wallet/history/${userId}`, { params }),
+  getProperties: (params) => api.get('/wallet/properties', { params }),
+  getProperty: (id) => api.get(`/wallet/properties/${id}`),
 };
 
 // Docs API

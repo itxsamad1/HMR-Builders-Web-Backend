@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from 'react-query';
 import { TrendingUp, DollarSign, Coins, PieChart, ArrowUpRight, Building2 } from 'lucide-react';
 import { useUser } from '../contexts/UserContext';
-import { portfolioAPI, usersAPI } from '../services/api';
+import { portfolioAPI, usersAPI, walletAPI } from '../services/api';
 import Layout from '../components/Layout/Layout';
 import PortfolioCard from '../components/PortfolioCard';
 import Button from '../components/ui/Button';
@@ -21,6 +21,7 @@ const Portfolio = () => {
     queryClient.invalidateQueries(['portfolio', userId]);
     queryClient.invalidateQueries(['portfolio-summary', userId]);
     queryClient.invalidateQueries(['profile', userId]);
+    queryClient.invalidateQueries(['token-holdings', userId]);
   }, [userId, queryClient]);
 
   // Fetch portfolio data
@@ -62,10 +63,20 @@ const Portfolio = () => {
     }
   );
 
+  // Fetch token holdings
+  const { data: tokenHoldingsData, isLoading: tokenHoldingsLoading } = useQuery(
+    ['token-holdings', userId],
+    () => walletAPI.getHoldings(userId),
+    {
+      enabled: !!userId,
+    }
+  );
+
   const portfolio = portfolioData?.data?.data || {};
   const summary = summaryData?.data?.data || {};
   const profile = profileData?.data?.data || {};
   const userStats = statsData?.data?.data || statsData?.data || {};
+  const tokenHoldings = tokenHoldingsData?.data?.data || {};
 
   // Debug logging
   console.log('Portfolio - Portfolio data:', portfolio);
@@ -73,7 +84,7 @@ const Portfolio = () => {
   console.log('Portfolio - Profile data:', profile);
 
 
-  if (portfolioLoading || summaryLoading || statsLoading) { 
+  if (portfolioLoading || summaryLoading || statsLoading || tokenHoldingsLoading) { 
     return (
       <Layout>
         <div className="min-h-screen bg-gray-50 py-8">
@@ -177,11 +188,11 @@ const Portfolio = () => {
             </button>
             <button
               className={`px-4 py-2 font-medium text-sm ${
-                activeTab === 'investments'
+                activeTab === 'tokens'
                   ? 'border-b-2 border-primary-600 text-primary-600'
                   : 'text-gray-500 hover:text-gray-700'
               }`}
-              onClick={() => setActiveTab('investments')}
+              onClick={() => setActiveTab('tokens')}
             >
               My Investments
             </button>
@@ -203,7 +214,7 @@ const Portfolio = () => {
                 <Card className="p-4 text-center">
                   <Coins className="w-8 h-8 text-blue-600 mx-auto mb-2" />
                   <p className="text-2xl font-bold text-gray-900">
-                    {userStats.totalTokens || summary.totalTokens || portfolio.totalTokens || 0}
+                    {parseFloat(userStats.totalTokens || summary.totalTokens || portfolio.totalTokens || 0).toFixed(2)}
                   </p>
                   <p className="text-sm text-gray-600">Total Tokens</p>
                 </Card>
@@ -235,23 +246,103 @@ const Portfolio = () => {
             </div>
           )}
 
-          {activeTab === 'investments' && (
-            <div>
-              {portfolio.investments && portfolio.investments.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {portfolio.investments.map((investment) => (
-                    <PortfolioCard key={investment.id} investment={investment} />
-                  ))}
+          {activeTab === 'tokens' && (
+            <div className="space-y-6">
+              {/* Token Holdings Summary */}
+              {tokenHoldings.summary && (
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                  <Card className="p-4 text-center">
+                    <Coins className="w-8 h-8 text-blue-600 mx-auto mb-2" />
+                    <p className="text-2xl font-bold text-gray-900">
+                      {tokenHoldings.summary.total_holdings || 0}
+                    </p>
+                    <p className="text-sm text-gray-600">Properties</p>
+                  </Card>
+                  <Card className="p-4 text-center">
+                    <Building2 className="w-8 h-8 text-green-600 mx-auto mb-2" />
+                    <p className="text-2xl font-bold text-gray-900">
+                      {parseFloat(tokenHoldings.summary.total_tokens || 0).toFixed(2)}
+                    </p>
+                    <p className="text-sm text-gray-600">Total Tokens</p>
+                  </Card>
+                  <Card className="p-4 text-center">
+                    <DollarSign className="w-8 h-8 text-purple-600 mx-auto mb-2" />
+                    <p className="text-2xl font-bold text-gray-900">
+                      {formatCurrency(tokenHoldings.summary.total_invested_pkr || 0)}
+                    </p>
+                    <p className="text-sm text-gray-600">Total Invested</p>
+                  </Card>
+                  <Card className="p-4 text-center">
+                    <TrendingUp className="w-8 h-8 text-orange-600 mx-auto mb-2" />
+                    <p className="text-2xl font-bold text-gray-900">
+                      {formatCurrency(tokenHoldings.summary.total_current_value_pkr || 0)}
+                    </p>
+                    <p className="text-sm text-gray-600">Current Value</p>
+                  </Card>
+                </div>
+              )}
+
+              {/* Token Holdings List */}
+              {tokenHoldings.holdings && tokenHoldings.holdings.length > 0 ? (
+                <div className="space-y-4">
+                  {tokenHoldings.holdings.map((holding) => {
+                    const gainLoss = parseFloat(holding.current_value_pkr || 0) - parseFloat(holding.total_invested_pkr || 0);
+                    const gainLossPercentage = parseFloat(holding.total_invested_pkr || 0) > 0 
+                      ? (gainLoss / parseFloat(holding.total_invested_pkr || 0)) * 100 
+                      : 0;
+
+                    return (
+                      <Card key={holding.id} className="p-6">
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                              {holding.title}
+                            </h3>
+                            <p className="text-sm text-gray-600 mb-4">
+                              {holding.location_city}, {holding.location_state}
+                            </p>
+                            
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                              <div>
+                                <p className="text-sm text-gray-500">Tokens Owned</p>
+                                <p className="text-lg font-semibold text-gray-900">
+                                  {parseFloat(holding.tokens_owned || 0).toFixed(2)}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-sm text-gray-500">Total Invested</p>
+                                <p className="text-lg font-semibold text-gray-900">
+                                  {formatCurrency(holding.total_invested_pkr || 0)}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-sm text-gray-500">Current Value</p>
+                                <p className="text-lg font-semibold text-gray-900">
+                                  {formatCurrency(holding.current_value_pkr || 0)}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-sm text-gray-500">Gain/Loss</p>
+                                <p className={`text-lg font-semibold ${gainLoss >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                  {formatCurrency(gainLoss)} ({gainLossPercentage.toFixed(2)}%)
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </Card>
+                    );
+                  })}
                 </div>
               ) : (
                 <Card className="p-12 text-center">
-                  <Building2 className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No Investments Yet</h3>
+                  <Coins className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No Token Holdings Yet</h3>
                   <p className="text-gray-600 mb-6">
-                    Start building your real estate portfolio by investing in properties.
+                    Start building your token portfolio by purchasing property tokens.
                   </p>
-                  <Button as="a" href="/properties">
-                    Browse Properties
+                  <Button as="a" href="/wallet">
+                    Buy Tokens
                   </Button>
                 </Card>
               )}
