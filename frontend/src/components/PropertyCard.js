@@ -114,7 +114,7 @@ const PropertyCard = ({ property, onInvest }) => {
             <span className="text-gray-500">Min Investment</span>
           </div>
           <div className="text-right font-medium">
-            {formatCurrency(property.minInvestment || 0)}
+            {property.minInvestment || 'PKR 0'}
           </div>
         </div>
 

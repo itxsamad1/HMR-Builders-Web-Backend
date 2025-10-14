@@ -57,16 +57,25 @@ const detectCardType = (cardNumber) => {
   return null;
 };
 
-// Get user's payment methods (no auth required)
+// Get user's payment methods (no auth required for demo)
 router.get('/', async (req, res) => {
   try {
-    // For demo purposes, use the first user from database
-    const userId = 'a6702919-c381-4ebe-881a-4c3045d5f551';
+    // Get user ID from query parameter or use default for demo
+    const userId = req.query.userId || 'a6702919-c381-4ebe-881a-4c3045d5f551';
     
-    const result = await query(
-      'SELECT id, card_type, card_number_masked, card_holder_name, expiry_month, expiry_year, currency, is_default, is_verified, status, created_at FROM payment_methods WHERE user_id = $1 AND status = $2 ORDER BY is_default DESC, created_at DESC',
-      [userId, 'active']
-    );
+    // Special handling for Sarah Khan - filter to show only her specific card
+    let queryText = 'SELECT id, card_type, card_number_masked, card_holder_name, expiry_month, expiry_year, currency, is_default, is_verified, status, created_at FROM payment_methods WHERE user_id = $1 AND status = $2';
+    let queryParams = [userId, 'active'];
+    
+    // Check if this is Sarah Khan and filter to show only ****-****-****-5678
+    if (userId === 'b7814020-d492-5fcf-992b-5d4156e6f662') {
+      queryText += ' AND card_number_masked = $3';
+      queryParams.push('****-****-****-5678');
+    }
+    
+    queryText += ' ORDER BY is_default DESC, created_at DESC';
+    
+    const result = await query(queryText, queryParams);
     
     res.json({
       success: true,

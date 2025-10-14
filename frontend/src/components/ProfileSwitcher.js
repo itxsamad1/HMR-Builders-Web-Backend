@@ -5,7 +5,7 @@ import Button from './ui/Button';
 import Card from './ui/Card';
 
 const ProfileSwitcher = () => {
-  const { currentUser, switchUser, users } = useUser();
+  const { currentUser, switchUser, users, usersLoading, usersError } = useUser();
   const [isOpen, setIsOpen] = useState(false);
 
   const handleUserSwitch = (userId) => {
@@ -19,9 +19,12 @@ const ProfileSwitcher = () => {
         variant="outline"
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 px-3 py-2"
+        disabled={usersLoading}
       >
         <User className="w-4 h-4" />
-        <span className="hidden sm:inline">{currentUser.name}</span>
+        <span className="hidden sm:inline">
+          {usersLoading ? 'Loading...' : currentUser?.name || 'Select User'}
+        </span>
         <ChevronDown className="w-4 h-4" />
       </Button>
 
@@ -32,7 +35,22 @@ const ProfileSwitcher = () => {
               <h3 className="font-semibold text-sm text-gray-700 mb-3">
                 Switch Profile
               </h3>
-              {users.map((user) => (
+              {usersLoading ? (
+                <div className="flex items-center justify-center py-4">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                  <span className="ml-2 text-sm text-gray-600">Loading users...</span>
+                </div>
+              ) : usersError ? (
+                <div className="text-center py-4">
+                  <p className="text-sm text-red-600">Failed to load users</p>
+                  <p className="text-xs text-gray-500 mt-1">Using fallback data</p>
+                </div>
+              ) : users.length === 0 ? (
+                <div className="text-center py-4">
+                  <p className="text-sm text-gray-600">No users found</p>
+                </div>
+              ) : (
+                users.map((user) => (
                 <button
                   key={user.id}
                   onClick={() => handleUserSwitch(user.id)}
@@ -69,7 +87,8 @@ const ProfileSwitcher = () => {
                     <Check className="w-4 h-4 text-blue-600" />
                   )}
                 </button>
-              ))}
+                ))
+              )}
             </div>
           </Card>
         </div>

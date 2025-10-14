@@ -4,6 +4,44 @@ const { authenticateToken } = require('../middleware/auth');
 
 const router = express.Router();
 
+// Get all users (for user switcher - no auth required for demo)
+router.get('/', async (req, res) => {
+  try {
+    const result = await query(
+      `SELECT 
+        id, name, first_name, last_name, email, phone, 
+        kyc_status, is_active, created_at
+      FROM users 
+      WHERE is_active = TRUE 
+      ORDER BY created_at DESC`
+    );
+
+    const users = result.rows.map(user => ({
+      id: user.id,
+      name: user.name,
+      firstName: user.first_name,
+      lastName: user.last_name,
+      email: user.email,
+      phone: user.phone,
+      kycStatus: user.kyc_status,
+      isActive: user.is_active,
+      createdAt: user.created_at
+    }));
+
+    res.json({
+      success: true,
+      data: users
+    });
+  } catch (error) {
+    console.error('Get users error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch users',
+      message: error.message
+    });
+  }
+});
+
 // Get user profile
 router.get('/profile', authenticateToken, async (req, res) => {
   try {
