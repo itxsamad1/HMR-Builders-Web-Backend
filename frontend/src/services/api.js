@@ -100,11 +100,29 @@ export const walletTransactionsAPI = {
 
 // Admin API (Complete)
 export const adminAPI = {
+  // Dashboard
   getDashboard: () => api.get('/admin/dashboard'),
-  getUsers: (params) => api.get('/admin/users', { params }),
-  getProperties: (params) => api.get('/admin/properties', { params }),
-  getInvestments: (params) => api.get('/admin/investments', { params }),
   getAnalytics: () => api.get('/admin/analytics'),
+  
+  // Users CRUD
+  getUsers: (params) => api.get('/admin/users', { params }),
+  getUser: (id) => api.get(`/admin/users/${id}`),
+  createUser: (data) => api.post('/admin/users', data),
+  updateUser: (id, data) => api.put(`/admin/users/${id}`, data),
+  deleteUser: (id) => api.delete(`/admin/users/${id}`),
+  updateUserStatus: (id, data) => api.patch(`/admin/users/${id}/status`, data),
+  
+  // Properties CRUD
+  getProperties: (params) => api.get('/admin/properties', { params }),
+  getProperty: (id) => api.get(`/admin/properties/${id}`),
+  createProperty: (data) => api.post('/admin/properties', data),
+  updateProperty: (id, data) => api.put(`/admin/properties/${id}`, data),
+  deleteProperty: (id) => api.delete(`/admin/properties/${id}`),
+  updatePropertyStatus: (id, data) => api.patch(`/admin/properties/${id}/status`, data),
+  
+  // Other
+  getInvestments: (params) => api.get('/admin/investments', { params }),
+  getTransactions: (params) => api.get('/admin/transactions', { params }),
 };
 
 // Portfolio API (Mobile Optimized)
