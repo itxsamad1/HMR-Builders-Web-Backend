@@ -130,4 +130,17 @@ export const docsAPI = {
   getDocs: () => api.get('/docs'),
 };
 
+// KYC API
+export const kycAPI = {
+  submitKYC: (kycData) => api.post('/kyc/submit', kycData),
+  uploadImage: (formData) => api.post('/kyc/upload-image', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  }),
+  getKYCStatus: (userId) => api.get(`/kyc/status/${userId}`),
+  updateKYCStatus: (kycId, statusData) => api.patch(`/kyc/update-status/${kycId}`, statusData),
+  detectCardType: (cardNumber) => api.post('/kyc/detect-card-type', { cardNumber }),
+};
+
 export default api;

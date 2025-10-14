@@ -19,6 +19,7 @@ const walletTransactionRoutes = require('./routes/walletTransactions');
 const portfolioRoutes = require('./routes/portfolio');
 const calculatorRoutes = require('./routes/calculator');
 const supportRoutes = require('./routes/support');
+const kycRoutes = require('./routes/kyc');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -86,6 +87,7 @@ app.use('/api/wallet-transactions', walletTransactionRoutes);
 app.use('/api/portfolio', portfolioRoutes);
 app.use('/api/calculator', calculatorRoutes);
 app.use('/api/support', supportRoutes);
+app.use('/api/kyc', kycRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {
