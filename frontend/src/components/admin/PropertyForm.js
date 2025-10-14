@@ -78,10 +78,47 @@ const PropertyForm = ({ property, onSave, onCancel, isLoading }) => {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
+    
+    setFormData(prev => {
+      const newData = {
+        ...prev,
+        [name]: type === 'checkbox' ? checked : value
+      };
+
+      // Auto-calculate Expected ROI when Total Value changes
+      if (name === 'pricing_total_value' && value) {
+        const totalValue = parseFloat(value);
+        if (totalValue > 0) {
+          // Calculate ROI based on total value (higher value = higher ROI)
+          const calculatedROI = Math.min(25, Math.max(5, (totalValue / 1000000000) * 2 + 8)).toFixed(1);
+          newData.pricing_expected_roi = calculatedROI;
+        }
+      }
+
+      // Auto-calculate Price Per Token when Total Tokens changes
+      if (name === 'tokenization_total_tokens' && value && prev.pricing_total_value) {
+        const totalTokens = parseFloat(value);
+        const totalValue = parseFloat(prev.pricing_total_value);
+        if (totalTokens > 0 && totalValue > 0) {
+          const pricePerToken = (totalValue / totalTokens).toFixed(2);
+          newData.tokenization_price_per_token = pricePerToken;
+          newData.tokenization_token_price = pricePerToken;
+        }
+      }
+
+      // Auto-calculate Price Per Token when Total Value changes (if Total Tokens is set)
+      if (name === 'pricing_total_value' && value && prev.tokenization_total_tokens) {
+        const totalValue = parseFloat(value);
+        const totalTokens = parseFloat(prev.tokenization_total_tokens);
+        if (totalValue > 0 && totalTokens > 0) {
+          const pricePerToken = (totalValue / totalTokens).toFixed(2);
+          newData.tokenization_price_per_token = pricePerToken;
+          newData.tokenization_token_price = pricePerToken;
+        }
+      }
+
+      return newData;
+    });
   };
 
   const handleSubmit = (e) => {
@@ -736,7 +773,8 @@ const PropertyForm = ({ property, onSave, onCancel, isLoading }) => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Expected ROI (%) *
+                  Expected ROI (%) * 
+                  <span className="text-xs text-blue-600 ml-1">(Auto-calculated)</span>
                 </label>
                 <input
                   type="text"
@@ -745,7 +783,7 @@ const PropertyForm = ({ property, onSave, onCancel, isLoading }) => {
                   onChange={handleChange}
                   required
                   placeholder="e.g., 11"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-blue-50"
                 />
               </div>
               <div>
@@ -813,7 +851,8 @@ const PropertyForm = ({ property, onSave, onCancel, isLoading }) => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Price Per Token (PKR) *
+                  Price Per Token (PKR) * 
+                  <span className="text-xs text-blue-600 ml-1">(Auto-calculated)</span>
                 </label>
                 <input
                   type="text"
@@ -822,12 +861,13 @@ const PropertyForm = ({ property, onSave, onCancel, isLoading }) => {
                   onChange={handleChange}
                   required
                   placeholder="e.g., 100000"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-blue-50"
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Token Price (PKR) *
+                  Token Price (PKR) * 
+                  <span className="text-xs text-blue-600 ml-1">(Auto-calculated)</span>
                 </label>
                 <input
                   type="text"
@@ -836,7 +876,7 @@ const PropertyForm = ({ property, onSave, onCancel, isLoading }) => {
                   onChange={handleChange}
                   required
                   placeholder="e.g., 100000"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-blue-50"
                 />
               </div>
             </div>
