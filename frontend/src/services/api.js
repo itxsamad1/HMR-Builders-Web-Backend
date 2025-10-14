@@ -64,6 +64,7 @@ export const investmentsAPI = {
 
 // Users API (Complete)
 export const usersAPI = {
+  getAll: () => api.get('/users'),
   getProfile: () => api.get('/users/profile'),
   getProfileById: (userId) => api.get(`/users/profile/${userId}`),
   updateProfile: (profileData) => api.put('/users/profile', profileData),
@@ -79,7 +80,7 @@ export const usersAPI = {
 
 // Payment Methods API
 export const paymentMethodsAPI = {
-  getAll: () => api.get('/payment-methods'),
+  getAll: (userId) => api.get(`/payment-methods${userId ? `?userId=${userId}` : ''}`),
   create: (paymentData) => api.post('/payment-methods', paymentData),
   setDefault: (id) => api.put(`/payment-methods/${id}/default`),
   delete: (id) => api.delete(`/payment-methods/${id}`),

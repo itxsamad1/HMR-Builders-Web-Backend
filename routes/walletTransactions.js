@@ -22,6 +22,21 @@ const convertToPKR = (amount, currency) => {
   return parseFloat((amount * rate).toFixed(2));
 };
 
+// Helper function to verify payment method with special handling for Sarah Khan
+const verifyPaymentMethod = async (paymentMethodId, userId) => {
+  // Special handling for Sarah Khan - ensure she can only use her specific card
+  let paymentMethodQuery = 'SELECT id, is_verified, status, card_number_masked FROM payment_methods WHERE id = $1 AND user_id = $2';
+  let paymentMethodParams = [paymentMethodId, userId];
+  
+  // For Sarah Khan, also verify the card number
+  if (userId === 'b7814020-d492-5fcf-992b-5d4156e6f662') {
+    paymentMethodQuery += ' AND card_number_masked = $3';
+    paymentMethodParams.push('****-****-****-5678');
+  }
+  
+  return await query(paymentMethodQuery, paymentMethodParams);
+};
+
 // Get wallet transactions by user ID (no auth required)
 router.get('/user/:userId', async (req, res) => {
   try {
@@ -74,7 +89,7 @@ router.get('/user/:userId', async (req, res) => {
 // Create wallet deposit (top-up)
 router.post('/deposit', async (req, res) => {
   try {
-    const userId = 'a6702919-c381-4ebe-881a-4c3045d5f551'; // Hardcoded for demo
+    const userId = req.body.userId || 'a6702919-c381-4ebe-881a-4c3045d5f551'; // Get from request or use default for demo
     const { amount, currency = 'PKR', paymentMethodId, description } = req.body;
     
     // Validate input
@@ -93,10 +108,7 @@ router.post('/deposit', async (req, res) => {
     }
     
     // Verify payment method belongs to user and is verified
-    const paymentMethod = await query(
-      'SELECT id, is_verified, status FROM payment_methods WHERE id = $1 AND user_id = $2',
-      [paymentMethodId, userId]
-    );
+    const paymentMethod = await verifyPaymentMethod(paymentMethodId, userId);
     
     if (paymentMethod.rows.length === 0) {
       return res.status(404).json({
@@ -200,7 +212,7 @@ router.post('/deposit', async (req, res) => {
 // Create wallet withdrawal
 router.post('/withdrawal', async (req, res) => {
   try {
-    const userId = 'a6702919-c381-4ebe-881a-4c3045d5f551'; // Hardcoded for demo
+    const userId = req.body.userId || 'a6702919-c381-4ebe-881a-4c3045d5f551'; // Get from request or use default for demo
     const { amount, currency = 'PKR', paymentMethodId, description } = req.body;
     
     // Validate input
@@ -219,10 +231,7 @@ router.post('/withdrawal', async (req, res) => {
     }
     
     // Verify payment method belongs to user and is verified
-    const paymentMethod = await query(
-      'SELECT id, is_verified, status FROM payment_methods WHERE id = $1 AND user_id = $2',
-      [paymentMethodId, userId]
-    );
+    const paymentMethod = await verifyPaymentMethod(paymentMethodId, userId);
     
     if (paymentMethod.rows.length === 0) {
       return res.status(404).json({
