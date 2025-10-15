@@ -12,6 +12,9 @@ import Dashboard from './pages/Dashboard';
 import Portfolio from './pages/Portfolio';
 import Profile from './pages/Profile';
 import Wallet from './pages/Wallet';
+import AdminDashboard from './pages/admin/AdminDashboard';
+import AdminLogin from './pages/admin/AdminLogin';
+import { AdminAuthProvider } from './components/admin/AdminAuth';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -39,6 +42,16 @@ function App() {
               <Route path="/portfolio" element={<Portfolio />} />
               <Route path="/wallet" element={<Wallet />} />
               <Route path="/profile" element={<Profile />} />
+                    <Route path="/admin/login" element={
+                      <AdminAuthProvider>
+                        <AdminLogin />
+                      </AdminAuthProvider>
+                    } />
+                    <Route path="/admin" element={
+                      <AdminAuthProvider>
+                        <AdminDashboard />
+                      </AdminAuthProvider>
+                    } />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </div>
