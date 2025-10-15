@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from 'react-query';
 import { ArrowRight, TrendingUp, Shield, Users, Building2, Star } from 'lucide-react';
 import { propertiesAPI } from '../services/api';
@@ -9,7 +9,12 @@ import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 
 const Home = () => {
+  const navigate = useNavigate();
   const [featuredProperties, setFeaturedProperties] = useState([]);
+
+  const handleInvest = (property) => {
+    navigate(`/wallet?buyTokens=1&propertyId=${property.id}`);
+  };
 
   // Fetch featured properties
   const { data: featuredData, isLoading: featuredLoading } = useQuery(
@@ -162,7 +167,7 @@ const Home = () => {
             {featuredProperties.slice(0, 3).map((property) => {
               // Debug: Log the property data
               console.log('Property data in Home:', property);
-              return <PropertyCard key={property.id} property={property} />;
+              return <PropertyCard key={property.id} property={property} onInvest={handleInvest} />;
             })}
           </div>
         )}

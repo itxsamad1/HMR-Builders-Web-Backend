@@ -35,13 +35,27 @@ const Wallet = () => {
 
   // Invalidate queries when user changes
   useEffect(() => {
-    console.log('Wallet: User changed to:', currentUser.name, 'ID:', userId);
+    if (currentUser?.name) {
+      console.log('Wallet: User changed to:', currentUser.name, 'ID:', userId);
+    }
     queryClient.invalidateQueries(['wallet-balance', userId]);
     queryClient.invalidateQueries(['wallet-transactions', userId]);
     queryClient.invalidateQueries(['paymentMethods', userId]);
-  }, [userId, queryClient, currentUser.name]);
+  }, [userId, queryClient, currentUser?.name]);
 
   const { register, handleSubmit, reset, formState: { errors }, watch } = useForm();
+  
+  // Optional deep link flags from query string - MUST be before early returns
+  const params = new URLSearchParams(window.location.search);
+  const openBuyTokens = params.get('buyTokens') === '1';
+  const preselectPropertyId = params.get('propertyId');
+
+  // Auto-open buy tokens modal from URL parameter
+  useEffect(() => {
+    if (openBuyTokens) {
+      setShowBuyTokens(true);
+    }
+  }, [openBuyTokens]);
   
 
   // Fetch wallet balance data
@@ -51,10 +65,10 @@ const Wallet = () => {
     { 
       enabled: !!userId,
       onSuccess: (data) => {
-        console.log('Wallet balance data for', currentUser.name, ':', data);
+        console.log('Wallet balance data for', currentUser?.name || 'User', ':', data);
       },
       onError: (error) => {
-        console.error('Wallet balance error for', currentUser.name, ':', error);
+        console.error('Wallet balance error for', currentUser?.name || 'User', ':', error);
       }
     }
   );
@@ -66,10 +80,10 @@ const Wallet = () => {
     { 
       enabled: !!userId,
       onSuccess: (data) => {
-        console.log('Wallet transactions data for', currentUser.name, ':', data);
+        console.log('Wallet transactions data for', currentUser?.name || 'User', ':', data);
       },
       onError: (error) => {
-        console.error('Wallet transactions error for', currentUser.name, ':', error);
+        console.error('Wallet transactions error for', currentUser?.name || 'User', ':', error);
       }
     }
   );
@@ -118,7 +132,7 @@ const Wallet = () => {
   console.log('Wallet data:', wallet);
   console.log('Transactions data:', walletTransactionsData);
   console.log('Transactions array:', transactions);
-  console.log('Payment methods for user', currentUser.name, '(', userId, '):', paymentMethods);
+  console.log('Payment methods for user', currentUser?.name || 'User', '(', userId, '):', paymentMethods);
 
   const filteredTransactions = Array.isArray(transactions) ? transactions.filter(transaction => {
     if (filter === 'all') return true;
@@ -205,7 +219,7 @@ const Wallet = () => {
             <div className="flex justify-center items-center h-64">
               <div className="text-center">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-                <p className="text-gray-600">Loading wallet for {currentUser.name}...</p>
+                <p className="text-gray-600">Loading wallet{currentUser?.name ? ` for ${currentUser.name}` : ''}...</p>
                 <p className="text-sm text-gray-500 mt-2">User ID: {userId}</p>
               </div>
             </div>
@@ -533,6 +547,7 @@ const Wallet = () => {
                   </div>
                   <BuyTokens 
                     userId={userId} 
+                    preselectPropertyId={preselectPropertyId}
                     onPurchaseSuccess={(data) => {
                       queryClient.invalidateQueries(['wallet-balance', userId]);
                       queryClient.invalidateQueries(['wallet-transactions', userId]);

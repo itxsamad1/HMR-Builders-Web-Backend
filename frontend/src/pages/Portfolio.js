@@ -134,13 +134,16 @@ const Portfolio = () => {
                 Track your real estate investments and returns
               </p>
             </div>
-            <Button 
-              onClick={() => refetchStats()} 
-              variant="outline"
-              className="ml-4"
-            >
-              Refresh Stats
-            </Button>
+            <div className="flex items-center gap-3">
+              <Button as="a" href="/wallet?buyTokens=1" className="bg-green-600 hover:bg-green-700">View All Properties</Button>
+              <Button 
+                onClick={() => refetchStats()} 
+                variant="outline"
+                className="ml-0"
+              >
+                Refresh Stats
+              </Button>
+            </div>
           </div>
 
           {/* Summary Cards */}
@@ -150,7 +153,7 @@ const Portfolio = () => {
                 <div>
                   <p className="text-sm font-medium text-gray-600">Total Investment</p>
                   <p className="text-2xl font-bold text-gray-900">
-                    {formatCurrency(userStats.totalInvestment || summary.totalInvestment || 0)}
+                    {formatCurrency(userStats.totalInvestment || tokenHoldings.summary?.total_invested_pkr || summary.totalInvestment || 0)}
                   </p>
                 </div>
                 <div className="p-3 bg-blue-100 rounded-full">
@@ -164,7 +167,7 @@ const Portfolio = () => {
                 <div>
                   <p className="text-sm font-medium text-gray-600">Current Value</p>
                   <p className="text-2xl font-bold text-gray-900">
-                    {formatCurrency(userStats.currentValue || summary.currentValue || 0)}
+                    {formatCurrency(userStats.currentValue || tokenHoldings.summary?.total_current_value_pkr || summary.currentValue || 0)}
                   </p>
                 </div>
                 <div className="p-3 bg-green-100 rounded-full">
@@ -235,7 +238,7 @@ const Portfolio = () => {
                 <Card className="p-4 text-center">
                   <Building2 className="w-8 h-8 text-green-600 mx-auto mb-2" />
                   <p className="text-2xl font-bold text-gray-900">
-                    {userStats.activeInvestments || portfolio.investments?.length || 0}
+                    {userStats.activeInvestments || tokenHoldings.summary?.total_holdings || portfolio.investments?.length || 0}
                   </p>
                   <p className="text-sm text-gray-600">Properties</p>
                 </Card>
@@ -257,6 +260,56 @@ const Portfolio = () => {
                   <p className="text-sm text-gray-600">Total Gains</p>
                 </Card>
               </div>
+
+              {/* My Investments preview on Overview */}
+              {tokenHoldings.holdings && tokenHoldings.holdings.length > 0 && (
+                <Card className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-gray-900">My Investments</h3>
+                    <Button variant="outline" onClick={() => setActiveTab('tokens')}>View All</Button>
+                  </div>
+                  <div className="space-y-4">
+                    {tokenHoldings.holdings.slice(0, 3).map((holding) => {
+                      const gainLoss = parseFloat(holding.current_value_pkr || 0) - parseFloat(holding.total_invested_pkr || 0);
+                      const gainLossPercentage = parseFloat(holding.total_invested_pkr || 0) > 0 
+                        ? (gainLoss / parseFloat(holding.total_invested_pkr || 0)) * 100 
+                        : 0;
+                      return (
+                        <div key={holding.id} className="border rounded-lg p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <h4 className="font-semibold text-gray-900">{holding.title}</h4>
+                              <p className="text-sm text-gray-600">{holding.location_city}, {holding.location_state}</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-sm text-gray-500">Current Value</p>
+                              <p className="font-semibold">{formatCurrency(holding.current_value_pkr || 0)}</p>
+                              <Button as="a" href={`/wallet?buyTokens=1&propertyId=${holding.property_id}`} className="mt-2 bg-green-600 hover:bg-green-700 py-1 px-3 text-sm">Invest</Button>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-3">
+                            <div>
+                              <p className="text-xs text-gray-500">Tokens</p>
+                              <p className="font-medium">{parseFloat(holding.tokens_owned || 0).toFixed(2)}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-500">Invested</p>
+                              <p className="font-medium">{formatCurrency(holding.total_invested_pkr || 0)}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-500">Gain/Loss</p>
+                              <p className={`font-medium ${gainLoss >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                {formatCurrency(gainLoss)} ({gainLossPercentage.toFixed(2)}%)
+                              </p>
+                            </div>
+                            <div className="hidden md:block" />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </Card>
+              )}
             </div>
           )}
 

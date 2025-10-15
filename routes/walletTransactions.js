@@ -220,45 +220,72 @@ router.post('/deposit', async (req, res) => {
 router.post('/withdrawal', async (req, res) => {
   try {
     const userId = req.body.userId || 'a6702919-c381-4ebe-881a-4c3045d5f551'; // Get from request or use default for demo
-    const { amount, currency = 'PKR', paymentMethodId, description } = req.body;
+    const { amount, currency = 'PKR', paymentMethodId, description, metadata } = req.body;
+    
+    console.log('=== WITHDRAWAL REQUEST ===');
+    console.log('User ID:', userId);
+    console.log('Amount:', amount);
+    console.log('Currency:', currency);
+    console.log('Metadata (raw):', metadata);
+    console.log('Metadata type:', typeof metadata);
+    console.log('========================');
     
     // Validate input
     if (!amount || amount <= 0) {
+      console.error('Validation failed: Invalid amount');
       return res.status(400).json({
         success: false,
         error: 'Invalid amount'
       });
     }
     
-    if (!paymentMethodId) {
+    // Parse metadata if it's a string
+    let parsedMetadata = metadata;
+    if (typeof metadata === 'string') {
+      try {
+        parsedMetadata = JSON.parse(metadata);
+        console.log('Parsed metadata:', parsedMetadata);
+      } catch (e) {
+        console.error('Failed to parse metadata:', e);
+      }
+    }
+    
+    // Check if this is a bank or crypto withdrawal (doesn't need payment method)
+    const isBankOrCryptoWithdrawal = parsedMetadata && (parsedMetadata.type === 'bank' || parsedMetadata.type === 'crypto');
+    console.log('Is bank or crypto withdrawal?', isBankOrCryptoWithdrawal);
+    
+    // For card withdrawals, payment method is required
+    if (!isBankOrCryptoWithdrawal && !paymentMethodId) {
       return res.status(400).json({
         success: false,
-        error: 'Payment method is required'
+        error: 'Payment method is required for card withdrawals'
       });
     }
     
-    // Verify payment method belongs to user and is verified
-    const paymentMethod = await verifyPaymentMethod(paymentMethodId, userId);
-    
-    if (paymentMethod.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        error: 'Payment method not found'
-      });
-    }
-    
-    if (!paymentMethod.rows[0].is_verified) {
-      return res.status(400).json({
-        success: false,
-        error: 'Payment method must be verified before use'
-      });
-    }
-    
-    if (paymentMethod.rows[0].status !== 'active') {
-      return res.status(400).json({
-        success: false,
-        error: 'Payment method is not active'
-      });
+    // Verify payment method if provided (for card withdrawals)
+    if (paymentMethodId && !isBankOrCryptoWithdrawal) {
+      const paymentMethod = await verifyPaymentMethod(paymentMethodId, userId);
+      
+      if (paymentMethod.rows.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: 'Payment method not found'
+        });
+      }
+      
+      if (!paymentMethod.rows[0].is_verified) {
+        return res.status(400).json({
+          success: false,
+          error: 'Payment method must be verified before use'
+        });
+      }
+      
+      if (paymentMethod.rows[0].status !== 'active') {
+        return res.status(400).json({
+          success: false,
+          error: 'Payment method is not active'
+        });
+      }
     }
     
     // Convert amount to PKR
@@ -272,17 +299,28 @@ router.post('/withdrawal', async (req, res) => {
     );
     
     if (walletResult.rows.length === 0) {
+      console.error('Wallet not found for user:', userId);
       return res.status(400).json({
         success: false,
         error: 'Wallet not found'
       });
     }
     
-    const currentBalance = walletResult.rows[0].available_balance;
+    const currentBalance = parseFloat(walletResult.rows[0].available_balance);
+    console.log('Current Balance (PKR):', currentBalance);
+    console.log('Amount in PKR:', amountInPKR);
+    console.log('Exchange Rate:', exchangeRate);
+    
     if (currentBalance < amountInPKR) {
+      console.error(`Insufficient balance: ${currentBalance} PKR < ${amountInPKR} PKR`);
       return res.status(400).json({
         success: false,
-        error: 'Insufficient balance'
+        error: 'Insufficient balance',
+        details: {
+          currentBalance: currentBalance,
+          requiredAmount: amountInPKR,
+          currency: 'PKR'
+        }
       });
     }
     
@@ -293,10 +331,10 @@ router.post('/withdrawal', async (req, res) => {
       // Create wallet transaction
       const transactionResult = await query(
         `INSERT INTO wallet_transactions 
-         (user_id, payment_method_id, transaction_type, amount, currency, exchange_rate, amount_in_pkr, description, status)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+         (user_id, payment_method_id, transaction_type, amount, currency, exchange_rate, amount_in_pkr, description, status, metadata)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
          RETURNING id, amount, currency, amount_in_pkr, status, created_at`,
-        [userId, paymentMethodId, 'withdrawal', amount, currency, exchangeRate, amountInPKR, description || 'Wallet withdrawal', 'pending']
+        [userId, paymentMethodId || null, 'withdrawal', amount, currency, exchangeRate, amountInPKR, description || 'Wallet withdrawal', 'pending', parsedMetadata ? JSON.stringify(parsedMetadata) : null]
       );
       
       const transaction = transactionResult.rows[0];

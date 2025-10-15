@@ -22,8 +22,8 @@ export const formatLocation = (location) => {
 
  // Format prices
  export const formatPrice = (price) => {
-  // If already formatted (contains PKR), return as is
-  if (typeof price === 'string' && price.includes('PKR')) {
+  // If already formatted (contains $), return as is
+  if (typeof price === 'string' && price.includes('$')) {
     return price;
   }
   
@@ -49,13 +49,13 @@ const formatNumericPrice = (num) => {
   if (isNaN(num)) return 'N/A';
   
   if (num >= 1000000000) {
-    return `PKR ${(num / 1000000000).toFixed(1)}B`;
+    return `$${(num / 1000000000).toFixed(1)}B`;
   } else if (num >= 1000000) {
-    return `PKR ${(num / 1000000).toFixed(1)}M`;
+    return `$${(num / 1000000).toFixed(1)}M`;
   } else if (num >= 1000) {
-    return `PKR ${(num / 1000).toFixed(0)}K`;
+    return `$${(num / 1000).toFixed(0)}K`;
   }
-  return `PKR ${num.toFixed(0)}`;
+  return `$${num.toFixed(0)}`;
 };
 
 
@@ -71,14 +71,14 @@ export const formatCurrency = (amount) => {
   }
   
   if (typeof amount === 'number') {
-    return new Intl.NumberFormat('en-PK', {
+    return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'PKR',
+      currency: 'USD',
       minimumFractionDigits: 0,
     }).format(amount);
   }
   
-  return 'PKR 0';
+  return '$0';
 };
 
 /**

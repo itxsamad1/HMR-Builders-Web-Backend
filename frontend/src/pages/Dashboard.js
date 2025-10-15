@@ -14,7 +14,7 @@ import Layout from '../components/Layout/Layout';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import PropertyCard from '../components/PropertyCard';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useUser } from '../contexts/UserContext';
 import { 
   portfolioAPI, 
@@ -27,9 +27,14 @@ import { formatCurrency, formatPercentage, formatPrice } from '../utils/formatLo
 import { demoUser, demoPortfolio, demoWallet, demoTransactions } from '../services/demoData';
 
 const Dashboard = () => {
+  const navigate = useNavigate();
   const { currentUser } = useUser();
   const userId = currentUser?.id;
   const queryClient = useQueryClient();
+
+  const handleInvest = (property) => {
+    navigate(`/wallet?buyTokens=1&propertyId=${property.id}`);
+  };
 
   // Invalidate queries when user changes
   useEffect(() => {
@@ -347,7 +352,7 @@ const Dashboard = () => {
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {properties.slice(0, 3).map((property) => (
-                    <PropertyCard key={property.id} property={property} />
+                    <PropertyCard key={property.id} property={property} onInvest={handleInvest} />
                   ))}
                 </div>
               </Card>

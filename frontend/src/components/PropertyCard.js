@@ -82,21 +82,13 @@ const PropertyCard = ({ property, onInvest }) => {
           <div>
             <p className="text-sm text-gray-500">Total Value</p>
             <p className="font-semibold text-lg">
-              {(() => {
-                const price = property.price || property.pricing?.totalValue || 'N/A';
-                console.log('Price value:', price, 'Type:', typeof price);
-                return formatPrice(price);
-              })()}
+              {property.price || formatPrice(property.pricing?.totalValue) || 'N/A'}
             </p>
           </div>
           <div>
             <p className="text-sm text-gray-500">Expected ROI</p>
             <p className="font-semibold text-lg text-green-600">
-              {(() => {
-                const roi = property.roi || property.pricing?.expectedROI || 'N/A';
-                console.log('ROI value:', roi, 'Type:', typeof roi);
-                return roi === 'N/A' ? roi : `${roi}%`;
-              })()}
+              {property.roi ? `${property.roi}%` : (property.pricing?.expectedROI ? `${property.pricing.expectedROI}%` : 'N/A')}
             </p>
           </div>
         </div>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery } from 'react-query';
+import { useNavigate } from 'react-router-dom';
 import { Search, Filter, Grid, List, MapPin, Building2 } from 'lucide-react';
 import { propertiesAPI } from '../services/api';
 import Layout from '../components/Layout/Layout';
@@ -9,6 +10,7 @@ import Input from '../components/ui/Input';
 import Card from '../components/ui/Card';
 
 const Properties = () => {
+  const navigate = useNavigate();
   const [filters, setFilters] = useState({
     search: '',
     status: '',
@@ -19,6 +21,10 @@ const Properties = () => {
   const [viewMode, setViewMode] = useState('grid');
   const [currentPage, setCurrentPage] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
+
+  const handleInvest = (property) => {
+    navigate(`/wallet?buyTokens=1&propertyId=${property.id}`);
+  };
 
   const { data, isLoading, error, refetch } = useQuery(
     ['properties', filters, currentPage],
@@ -282,7 +288,7 @@ const Properties = () => {
             : 'grid-cols-1'
         }`}>
           {properties.map((property) => (
-            <PropertyCard key={property.id} property={property} />
+            <PropertyCard key={property.id} property={property} onInvest={handleInvest} />
           ))}
         </div>
       )}

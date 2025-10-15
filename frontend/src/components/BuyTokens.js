@@ -7,15 +7,27 @@ import { Select } from './ui/Select';
 import Badge from './ui/Badge';
 import { Building2, MapPin, TrendingUp, Coins } from 'lucide-react';
 
-const BuyTokens = ({ userId, onPurchaseSuccess }) => {
+const BuyTokens = ({ userId, onPurchaseSuccess, preselectPropertyId }) => {
   const [properties, setProperties] = useState([]);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [highlightId, setHighlightId] = useState(null);
 
   // Fetch properties on component mount
   useEffect(() => {
     fetchProperties();
   }, []);
+
+  useEffect(() => {
+    if (preselectPropertyId) {
+      setHighlightId(preselectPropertyId);
+      // Scroll into view after list renders
+      setTimeout(() => {
+        const el = document.getElementById(`property-${preselectPropertyId}`);
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 300);
+    }
+  }, [preselectPropertyId, properties]);
 
   const fetchProperties = async () => {
     try {
@@ -53,6 +65,8 @@ const BuyTokens = ({ userId, onPurchaseSuccess }) => {
         {properties.map((property) => (
           <PropertyTokenCard
             key={property.id}
+            idAttr={`property-${property.id}`}
+            highlight={highlightId === String(property.id) || highlightId === property.id}
             property={property}
             userId={userId}
             onPurchaseSuccess={onPurchaseSuccess}
@@ -64,7 +78,7 @@ const BuyTokens = ({ userId, onPurchaseSuccess }) => {
 };
 
 // Individual Property Token Card Component
-const PropertyTokenCard = ({ property, userId, onPurchaseSuccess }) => {
+const PropertyTokenCard = ({ property, userId, onPurchaseSuccess, idAttr, highlight }) => {
   const [pkrAmount, setPkrAmount] = useState('');
   const [tokenAmount, setTokenAmount] = useState('');
   const [loading, setLoading] = useState(false);
@@ -140,7 +154,7 @@ const PropertyTokenCard = ({ property, userId, onPurchaseSuccess }) => {
   };
 
   return (
-    <Card className="p-6 hover:shadow-lg transition-shadow">
+    <Card id={idAttr} className={`p-6 hover:shadow-lg transition-shadow ${highlight ? 'ring-2 ring-green-400' : ''}`}>
       {/* Property Header */}
       <div className="mb-4">
         <div className="flex items-start justify-between mb-2">
