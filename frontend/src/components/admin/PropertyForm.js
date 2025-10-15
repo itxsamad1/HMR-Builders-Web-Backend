@@ -164,7 +164,7 @@ const PropertyForm = ({ property, onSave, onCancel, isLoading }) => {
     ];
     
     const randomPropertyTypes = ['residential', 'commercial', 'mixed-use'];
-    const randomStatuses = ['coming-soon', 'active', 'construction', 'planning'];
+    const randomStatuses = ['coming-soon', 'active', 'construction', 'planning', 'on-hold'];
     
     const randomTitle = randomTitles[Math.floor(Math.random() * randomTitles.length)];
     const randomDescription = randomDescriptions[Math.floor(Math.random() * randomDescriptions.length)];
@@ -640,6 +640,7 @@ const PropertyForm = ({ property, onSave, onCancel, isLoading }) => {
                   <option value="construction">Construction</option>
                   <option value="active">Active</option>
                   <option value="coming-soon">Coming Soon</option>
+                  <option value="on-hold">On Hold</option>
                   <option value="sold-out">Sold Out</option>
                   <option value="completed">Completed</option>
                 </select>

@@ -790,6 +790,7 @@ router.post('/test-insert', async (req, res) => {
   }
 });
 
+
 // Create new property
 router.post('/properties', async (req, res) => {
   try {

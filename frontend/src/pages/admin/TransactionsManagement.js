@@ -18,8 +18,10 @@ import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Badge from '../../components/ui/Badge';
 import { adminAPI } from '../../services/api';
+import { useAdminAuth } from '../../components/admin/AdminAuth';
 
 const TransactionsManagement = () => {
+  const { isAuthenticated } = useAdminAuth();
   const [filters, setFilters] = useState({
     search: '',
     status: '',
@@ -36,7 +38,10 @@ const TransactionsManagement = () => {
       ...filters,
       page: currentPage,
       limit: 10
-    })
+    }),
+    {
+      enabled: isAuthenticated
+    }
   );
 
   const transactions = transactionsData?.data?.transactions || [];
@@ -86,6 +91,14 @@ const TransactionsManagement = () => {
       minute: '2-digit'
     });
   };
+
+  if (!isAuthenticated) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-gray-600">Please log in to view transactions.</p>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (

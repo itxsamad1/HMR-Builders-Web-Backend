@@ -23,8 +23,10 @@ import Button from '../../components/ui/Button';
 import Badge from '../../components/ui/Badge';
 import UserForm from '../../components/admin/UserForm';
 import { adminAPI } from '../../services/api';
+import { useAdminAuth } from '../../components/admin/AdminAuth';
 
 const UsersManagement = () => {
+  const { isAuthenticated } = useAdminAuth();
   const [filters, setFilters] = useState({
     search: '',
     status: '',
@@ -49,7 +51,10 @@ const UsersManagement = () => {
       ...filters,
       page: currentPage,
       limit: 10
-    })
+    }),
+    {
+      enabled: isAuthenticated
+    }
   );
 
   // Update user status mutation
@@ -173,6 +178,14 @@ const UsersManagement = () => {
       day: 'numeric'
     });
   };
+
+  if (!isAuthenticated) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-gray-600">Please log in to view users.</p>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (

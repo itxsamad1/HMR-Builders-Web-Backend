@@ -20,8 +20,10 @@ import Button from '../../components/ui/Button';
 import Badge from '../../components/ui/Badge';
 import PropertyForm from '../../components/admin/PropertyForm';
 import { adminAPI } from '../../services/api';
+import { useAdminAuth } from '../../components/admin/AdminAuth';
 
 const PropertiesManagement = () => {
+  const { isAuthenticated } = useAdminAuth();
   const [filters, setFilters] = useState({
     search: '',
     status: '',
@@ -49,7 +51,8 @@ const PropertiesManagement = () => {
     }),
     {
       retry: 1,
-      refetchOnWindowFocus: false
+      refetchOnWindowFocus: false,
+      enabled: isAuthenticated
     }
   );
 
@@ -184,6 +187,7 @@ const PropertiesManagement = () => {
       'coming-soon': { variant: 'warning', text: 'Coming Soon' },
       'active': { variant: 'success', text: 'Active' },
       'construction': { variant: 'info', text: 'Under Construction' },
+      'on-hold': { variant: 'secondary', text: 'On Hold' },
       'sold-out': { variant: 'danger', text: 'Sold Out' },
       'completed': { variant: 'primary', text: 'Completed' }
     };
@@ -222,6 +226,14 @@ const PropertiesManagement = () => {
     console.log(`Funding calculation: total=${totalNum}, available=${availableNum}, percentage=${percentage}`);
     return percentage;
   };
+
+  if (!isAuthenticated) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-gray-600">Please log in to view properties.</p>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -286,6 +298,7 @@ const PropertiesManagement = () => {
               <option value="coming-soon">Coming Soon</option>
               <option value="active">Active</option>
               <option value="construction">Under Construction</option>
+              <option value="on-hold">On Hold</option>
               <option value="sold-out">Sold Out</option>
               <option value="completed">Completed</option>
             </select>
@@ -619,6 +632,7 @@ const PropertiesManagement = () => {
                       <option value="construction">Construction</option>
                       <option value="active">Active</option>
                       <option value="coming-soon">Coming Soon</option>
+                      <option value="on-hold">On Hold</option>
                       <option value="sold-out">Sold Out</option>
                       <option value="completed">Completed</option>
                     </select>
