@@ -10,7 +10,7 @@ const api = axios.create({
   },
 });
 
-// Request interceptor (no auth needed)
+// Request interceptor (no auth needed for demo)
 api.interceptors.request.use(
   (config) => {
     return config;
@@ -46,6 +46,7 @@ export const propertiesAPI = {
   getBySlug: (slug) => api.get(`/properties/slug/${slug}`),
   getById: (id) => api.get(`/properties/${id}`),
   getStats: (id) => api.get(`/properties/${id}/stats`),
+  getFilterOptions: () => api.get('/properties/filter-options'),
   create: (propertyData) => api.post('/properties', propertyData),
   update: (id, propertyData) => api.put(`/properties/${id}`, propertyData),
   delete: (id) => api.delete(`/properties/${id}`),
@@ -76,6 +77,7 @@ export const usersAPI = {
   getWallet: () => api.get('/users/wallet'),
   getWalletById: (userId) => api.get(`/users/wallet/${userId}`),
   getHoldings: () => api.get('/users/holdings'),
+  getAllUsers: () => api.get('/users/all'),
 };
 
 // Payment Methods API
@@ -96,6 +98,9 @@ export const walletTransactionsAPI = {
   getById: (id) => api.get(`/wallet-transactions/${id}`),
   getBalance: () => api.get('/wallet-transactions/balance/current'),
   getByUserId: (userId, params) => api.get(`/wallet-transactions/user/${userId}`, { params }),
+  // New on-chain and third-party deposit methods
+  createOnChainDeposit: (data) => api.post('/wallet-transactions/deposit', { ...data, type: 'onchain' }),
+  createThirdPartyDeposit: (data) => api.post('/wallet-transactions/deposit', { ...data, type: 'thirdparty' }),
 };
 
 // Admin API (Complete)
@@ -129,6 +134,8 @@ export const adminAPI = {
 export const portfolioAPI = {
   getPortfolio: (userId) => api.get(`/portfolio/${userId}`),
   getSummary: (userId) => api.get(`/portfolio/summary/${userId}`),
+  getStats: (userId) => api.get(`/portfolio/stats/${userId}`),
+  updateStats: (userId, statsData) => api.put(`/portfolio/stats/${userId}`, statsData),
 };
 
 // Calculator API (Mobile Optimized)
@@ -142,6 +149,15 @@ export const supportAPI = {
   submitContact: (data) => api.post('/support/contact', data),
   getFAQ: () => api.get('/support/faq'),
   getContactInfo: () => api.get('/support/contact-info'),
+};
+
+// Wallet API (Token Purchase & Management)
+export const walletAPI = {
+  buyTokens: (data) => api.post('/wallet/buy-tokens', data),
+  getHoldings: (userId) => api.get(`/wallet/holdings/${userId}`),
+  getHistory: (userId, params) => api.get(`/wallet/history/${userId}`, { params }),
+  getProperties: (params) => api.get('/wallet/properties', { params }),
+  getProperty: (id) => api.get(`/wallet/properties/${id}`),
 };
 
 // Docs API

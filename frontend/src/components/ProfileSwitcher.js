@@ -1,16 +1,26 @@
 import React, { useState } from 'react';
 import { useUser } from '../contexts/UserContext';
-import { User, ChevronDown, Check } from 'lucide-react';
+import { User, ChevronDown, Check, RefreshCw } from 'lucide-react';
 import Button from './ui/Button';
 import Card from './ui/Card';
 
 const ProfileSwitcher = () => {
   const { currentUser, switchUser, users, usersLoading, usersError } = useUser();
   const [isOpen, setIsOpen] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const handleUserSwitch = (userId) => {
     switchUser(userId);
     setIsOpen(false);
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await refreshUsers();
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   return (

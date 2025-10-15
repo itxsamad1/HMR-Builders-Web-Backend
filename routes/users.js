@@ -400,4 +400,53 @@ router.put('/profile', authenticateToken, async (req, res) => {
   }
 });
 
+// Get all users for profile switching (demo purposes)
+router.get('/all', async (req, res) => {
+  try {
+    const result = await query(`
+      SELECT 
+        id,
+        email,
+        name,
+        first_name,
+        last_name,
+        phone,
+        kyc_status,
+        profile_image,
+        created_at
+      FROM users 
+      WHERE is_active = true 
+      ORDER BY created_at DESC
+      LIMIT 10
+    `);
+
+    const users = result.rows.map(user => ({
+      id: user.id,
+      name: user.name,
+      firstName: user.first_name,
+      lastName: user.last_name,
+      email: user.email,
+      phone: user.phone,
+      kycStatus: user.kyc_status,
+      profileImage: user.profile_image,
+      createdAt: user.created_at
+    }));
+
+    res.json({
+      success: true,
+      data: {
+        users
+      }
+    });
+
+  } catch (error) {
+    console.error('Get all users error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to retrieve users',
+      message: error.message
+    });
+  }
+});
+
 module.exports = router;

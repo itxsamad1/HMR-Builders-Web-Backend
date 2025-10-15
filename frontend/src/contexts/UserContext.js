@@ -52,6 +52,21 @@ export const UserProvider = ({ children }) => {
     }
   };
 
+  const refreshUsers = async () => {
+    try {
+      const response = await usersAPI.getAllUsers();
+      if (response.data?.success && response.data?.data?.users) {
+        const dbUsers = response.data.data.users;
+        setUsers(dbUsers);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Error refreshing users:', error);
+      return false;
+    }
+  };
+
   const value = {
     currentUser,
     switchUser,

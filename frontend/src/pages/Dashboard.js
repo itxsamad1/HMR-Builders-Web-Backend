@@ -13,6 +13,7 @@ import {
 import Layout from '../components/Layout/Layout';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
+import PropertyCard from '../components/PropertyCard';
 import { Link } from 'react-router-dom';
 import { useUser } from '../contexts/UserContext';
 import { 
@@ -22,7 +23,7 @@ import {
   propertiesAPI,
   walletTransactionsAPI 
 } from '../services/api';
-import { formatCurrency, formatPercentage } from '../utils/formatLocation';
+import { formatCurrency, formatPercentage, formatPrice } from '../utils/formatLocation';
 import { demoUser, demoPortfolio, demoWallet, demoTransactions } from '../services/demoData';
 
 const Dashboard = () => {
@@ -100,6 +101,17 @@ const Dashboard = () => {
     () => propertiesAPI.getFeatured()
   );
 
+  const { data: statsData, isLoading: statsLoading, refetch: refetchStats } = useQuery(
+    ['portfolio-stats', userId],
+    () => portfolioAPI.getStats(userId),
+    { 
+      enabled: !!userId,
+      staleTime: 0, // Always fetch fresh data
+      cacheTime: 0, // Don't cache the data
+      refetchOnWindowFocus: true // Refetch when window gains focus
+    }
+  );
+
   const portfolio = portfolioData?.data?.data || {};
   const summary = summaryData?.data?.data || {};
   const profile = profileData?.data?.data || {};
@@ -107,13 +119,8 @@ const Dashboard = () => {
   const wallet = walletData?.data?.data || {};
   const transactions = recentTransactions?.data?.data?.transactions || [];
   const properties = featuredProperties?.data?.data?.properties || featuredProperties?.data?.properties || featuredProperties?.properties || [];
+  const userStats = statsData?.data?.data || statsData?.data || {};
 
-  // Debug logging
-  console.log('Dashboard - Portfolio:', portfolio);
-  console.log('Dashboard - Summary:', summary);
-  console.log('Dashboard - Profile:', profile);
-  console.log('Dashboard - Investments:', investments);
-  console.log('Dashboard - Wallet:', wallet);
 
   if (portfolioLoading || summaryLoading || profileLoading) {
     return (
@@ -133,33 +140,38 @@ const Dashboard = () => {
     );
   }
 
+
   const stats = [
     {
       name: 'Total Investment',
-      value: formatCurrency(portfolio.totalInvestment || 0),
-      change: '+12.5%',
-      changeType: 'positive',
+      value: formatCurrency(userStats.totalInvestment || portfolio.totalInvestment || 0),
+      change: userStats.totalInvestmentChange !== undefined ? 
+        `${userStats.totalInvestmentChange >= 0 ? '+' : ''}${userStats.totalInvestmentChange}%` : '+0%',
+      changeType: userStats.totalInvestmentChange > 0 ? 'positive' : userStats.totalInvestmentChange < 0 ? 'negative' : 'neutral',
       icon: DollarSign,
     },
     {
       name: 'Current Value',
-      value: formatCurrency(portfolio.currentValue || 0),
-      change: '+8.2%',
-      changeType: 'positive',
+      value: formatCurrency(userStats.currentValue || portfolio.currentValue || 0),
+      change: userStats.currentValueChange !== undefined ? 
+        `${userStats.currentValueChange >= 0 ? '+' : ''}${userStats.currentValueChange}%` : '+0%',
+      changeType: userStats.currentValueChange > 0 ? 'positive' : userStats.currentValueChange < 0 ? 'negative' : 'neutral',
       icon: TrendingUp,
     },
     {
       name: 'Total ROI',
-      value: formatPercentage(portfolio.totalROI || 0),
-      change: '+2.1%',
-      changeType: 'positive',
+      value: formatPercentage(userStats.totalROI || portfolio.totalROI || 0),
+      change: userStats.totalROIChange !== undefined ? 
+        `${userStats.totalROIChange >= 0 ? '+' : ''}${userStats.totalROIChange}%` : '+0%',
+      changeType: userStats.totalROIChange > 0 ? 'positive' : userStats.totalROIChange < 0 ? 'negative' : 'neutral',
       icon: PieChart,
     },
     {
       name: 'Active Investments',
-      value: investments.length.toString(),
-      change: '+1',
-      changeType: 'positive',
+      value: (userStats.activeInvestments || investments.length).toString(),
+      change: userStats.activeInvestmentsChange !== undefined ? 
+        `${userStats.activeInvestmentsChange >= 0 ? '+' : ''}${userStats.activeInvestmentsChange}` : '+0',
+      changeType: userStats.activeInvestmentsChange > 0 ? 'positive' : userStats.activeInvestmentsChange < 0 ? 'negative' : 'neutral',
       icon: Building2,
     },
   ];
@@ -169,13 +181,22 @@ const Dashboard = () => {
       <div className="min-h-screen bg-gray-50 py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">
-              Welcome back, {profile.firstName || 'User'}!
-            </h1>
-            <p className="text-gray-600 mt-2">
-              Here's an overview of your investment portfolio
-            </p>
+          <div className="mb-8 flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">
+                Welcome back, {profile.firstName || 'User'}!
+              </h1>
+              <p className="text-gray-600 mt-2">
+                Here's an overview of your investment portfolio
+              </p>
+            </div>
+            <Button 
+              onClick={() => refetchStats()} 
+              variant="outline"
+              className="ml-4"
+            >
+              Refresh Stats
+            </Button>
           </div>
 
           {/* Stats Grid */}
@@ -312,27 +333,7 @@ const Dashboard = () => {
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {properties.slice(0, 3).map((property) => (
-                    <div key={property.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
-                      <div className="aspect-w-16 aspect-h-9 mb-4">
-                        {property.images?.gallery?.[0] && (
-                          <img
-                            src={property.images.gallery[0]}
-                            alt={property.title}
-                            className="w-full h-32 object-cover rounded-lg"
-                          />
-                        )}
-                      </div>
-                      <h3 className="font-semibold text-gray-900 mb-2">{property.title}</h3>
-                      <p className="text-sm text-gray-600 mb-2">{property.location}</p>
-                      <div className="flex justify-between items-center">
-                        <span className="text-lg font-bold text-primary-600">
-                          {formatCurrency(property.price || property.listingPriceMin)}
-                        </span>
-                        <span className="text-sm text-green-600">
-                          {property.roi || property.expectedRoiMin}% ROI
-                        </span>
-                      </div>
-                    </div>
+                    <PropertyCard key={property.id} property={property} />
                   ))}
                 </div>
               </Card>

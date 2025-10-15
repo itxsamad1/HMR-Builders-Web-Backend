@@ -5,11 +5,10 @@ const { authenticateToken } = require('../middleware/auth');
 const router = express.Router();
 
 // Contact support
-router.post('/contact', async (req, res) => {
+router.post('/contact', authenticateToken, async (req, res) => {
   try {
     const { type, message, subject } = req.body;
-    // For demo purposes, use the first user from database
-    const userId = 'a6702919-c381-4ebe-881a-4c3045d5f551';
+    const userId = req.user.id;
 
     if (!type || !message) {
       return res.status(400).json({

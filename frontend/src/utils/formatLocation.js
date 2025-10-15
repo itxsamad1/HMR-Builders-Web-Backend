@@ -20,6 +20,45 @@ export const formatLocation = (location) => {
   return 'Location not specified';
 };
 
+ // Format prices
+ export const formatPrice = (price) => {
+  // If already formatted (contains PKR), return as is
+  if (typeof price === 'string' && price.includes('PKR')) {
+    return price;
+  }
+  
+  // If it's a string but not formatted, try to parse it
+  if (typeof price === 'string') {
+    const num = parseFloat(price);
+    if (isNaN(num)) {
+      return 'N/A';
+    }
+    return formatNumericPrice(num);
+  }
+  
+  // If it's a number, format it
+  if (typeof price === 'number') {
+    return formatNumericPrice(price);
+  }
+  
+  return 'N/A';
+};
+
+// Helper function to format numeric prices
+const formatNumericPrice = (num) => {
+  if (isNaN(num)) return 'N/A';
+  
+  if (num >= 1000000000) {
+    return `PKR ${(num / 1000000000).toFixed(1)}B`;
+  } else if (num >= 1000000) {
+    return `PKR ${(num / 1000000).toFixed(1)}M`;
+  } else if (num >= 1000) {
+    return `PKR ${(num / 1000).toFixed(0)}K`;
+  }
+  return `PKR ${num.toFixed(0)}`;
+};
+
+
 /**
  * Format currency for display
  * Handles both string and number formats

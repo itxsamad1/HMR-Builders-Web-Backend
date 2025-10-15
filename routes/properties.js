@@ -97,6 +97,13 @@ router.get('/', optionalAuth, async (req, res) => {
         title: row.title,
         slug: row.slug,
         location: row.location_address,
+        propertyType: row.property_type,
+        status: row.status,
+        pricing: {
+          totalValue: row.pricing_total_value,
+          expectedROI: row.pricing_expected_roi,
+          marketValue: row.pricing_market_value || row.pricing_total_value
+        },
         price: formatPrice(row.pricing_total_value),
         marketValue: formatPrice(row.pricing_market_value || row.pricing_total_value),
         appreciation: row.pricing_appreciation,
@@ -106,8 +113,9 @@ router.get('/', optionalAuth, async (req, res) => {
         status: row.status,
         tokens: totalTokens,
         availableTokens: availableTokens,
-        minInvestment: formatPrice(row.pricing_min_investment),
+        minInvestment: parseFloat(row.pricing_min_investment),
         description: row.short_description,
+        shortDescription: row.short_description,
         features: row.features || [],
         fundingPercentage: Math.round(fundingPercentage),
         investorCount: Math.floor(soldTokens / 10), // Estimate based on tokens sold
@@ -311,25 +319,19 @@ router.get('/:slug', optionalAuth, async (req, res) => {
     const fundingPercentage = totalTokens > 0 ? (soldTokens / totalTokens) * 100 : 0;
     const investorCount = Math.floor(soldTokens / 10); // Estimate
 
-    // Format prices
-    const formatPrice = (price) => {
-      const num = parseFloat(price);
-      if (num >= 1000000000) {
-        return `PKR ${(num / 1000000000).toFixed(1)}B`;
-      } else if (num >= 1000000) {
-        return `PKR ${(num / 1000000).toFixed(1)}M`;
-      } else if (num >= 1000) {
-        return `PKR ${(num / 1000).toFixed(0)}K`;
-      }
-      return `PKR ${num.toFixed(0)}`;
-    };
-
+   
     const property = {
       id: row.id,
       title: row.title,
       location: row.location_address,
       propertyType: row.property_type,
       status: row.status,
+      pricing: {
+        totalValue: parseFloat(row.pricing_total_value),
+        marketValue: parseFloat(row.pricing_market_value || row.pricing_total_value),
+        appreciation: parseFloat(row.pricing_appreciation.replace('%', '')),
+        expectedRoi: parseFloat(row.pricing_expected_roi.replace('%', ''))
+      },
       listingPriceMin: parseFloat(row.pricing_total_value),
       listingPriceMax: parseFloat(row.pricing_market_value || row.pricing_total_value),
       marketValueMin: parseFloat(row.pricing_market_value || row.pricing_total_value),

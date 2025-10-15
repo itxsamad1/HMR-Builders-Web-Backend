@@ -127,77 +127,126 @@ router.post('/deposit', async (req, res) => {
     if (paymentMethod.rows[0].status !== 'active') {
       return res.status(400).json({
         success: false,
-        error: 'Payment method is not active'
+        error: 'User ID is required'
       });
     }
     
-    // Convert amount to PKR
-    const amountInPKR = convertToPKR(amount, currency);
-    const exchangeRate = getExchangeRate(currency, 'PKR');
-    
-    // Start transaction
-    await query('BEGIN');
-    
-    try {
-      // Create wallet transaction
-      const transactionResult = await query(
-        `INSERT INTO wallet_transactions 
-         (user_id, payment_method_id, transaction_type, amount, currency, exchange_rate, amount_in_pkr, description, status)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-         RETURNING id, amount, currency, amount_in_pkr, status, created_at`,
-        [userId, paymentMethodId, 'deposit', amount, currency, exchangeRate, amountInPKR, description || 'Wallet top-up', 'pending']
-      );
-      
-      const transaction = transactionResult.rows[0];
-      
-      // For testing purposes, we'll simulate a successful payment
-      // In production, this would integrate with a real payment gateway
-      
-      // Update transaction status to completed
-      await query(
-        'UPDATE wallet_transactions SET status = $1, processed_at = NOW() WHERE id = $2',
-        ['completed', transaction.id]
-      );
-      
-      // Update user wallet balance
-      const existingWallet = await query(
-        'SELECT id FROM user_wallets WHERE user_id = $1',
-        [userId]
-      );
-      
-      if (existingWallet.rows.length > 0) {
-        // Update existing wallet
-        await query(
-          `UPDATE user_wallets 
-           SET available_balance = available_balance + $1, updated_at = NOW()
-           WHERE user_id = $2`,
-          [amountInPKR, userId]
-        );
-      } else {
-        // Create new wallet
-        await query(
-          `INSERT INTO user_wallets (user_id, available_balance, total_investment, total_tokens)
-           VALUES ($1, $2, $3, $4)`,
-          [userId, amountInPKR, 0, 0]
-        );
+    // Handle different deposit types
+    if (type === 'onchain') {
+      return handleOnChainDeposit(req, res);
+    } else if (type === 'thirdparty') {
+      return handleThirdPartyDeposit(req, res);
+    } else {
+      // Default debit card deposit logic - validate input only for debit card deposits
+      if (!amount || amount <= 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid amount'
+        });
       }
       
-      await query('COMMIT');
+      if (!paymentMethodId) {
+        return res.status(400).json({
+          success: false,
+          error: 'Payment method is required'
+        });
+      }
       
-      res.status(201).json({
-        success: true,
-        message: 'Deposit successful',
-        data: {
-          transactionId: transaction.id,
-          amount: transaction.amount,
-          currency: transaction.currency,
-          amountInPKR: transaction.amount_in_pkr,
-          status: 'completed'
+      // Verify payment method belongs to user and is verified
+      const paymentMethod = await query(
+        'SELECT id, is_verified, status FROM payment_methods WHERE id = $1 AND user_id = $2',
+        [paymentMethodId, userId]
+      );
+      
+      if (paymentMethod.rows.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: 'Payment method not found'
+        });
+      }
+      
+      if (!paymentMethod.rows[0].is_verified) {
+        return res.status(400).json({
+          success: false,
+          error: 'Payment method must be verified before use'
+        });
+      }
+      
+      if (paymentMethod.rows[0].status !== 'active') {
+        return res.status(400).json({
+          success: false,
+          error: 'Payment method is not active'
+        });
+      }
+      
+      // Convert amount to PKR
+      const amountInPKR = convertToPKR(amount, currency);
+      const exchangeRate = getExchangeRate(currency, 'PKR');
+      
+      // Start transaction
+      await query('BEGIN');
+      
+      try {
+        // Create wallet transaction
+        const transactionResult = await query(
+          `INSERT INTO wallet_transactions 
+           (user_id, payment_method_id, transaction_type, amount, currency, exchange_rate, amount_in_pkr, description, status)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+           RETURNING id, amount, currency, amount_in_pkr, status, created_at`,
+          [userId, paymentMethodId, 'deposit', amount, currency, exchangeRate, amountInPKR, description || 'Wallet top-up', 'pending']
+        );
+        
+        const transaction = transactionResult.rows[0];
+        
+        // For testing purposes, we'll simulate a successful payment
+        // In production, this would integrate with a real payment gateway
+        
+        // Update transaction status to completed
+        await query(
+          'UPDATE wallet_transactions SET status = $1, processed_at = NOW() WHERE id = $2',
+          ['completed', transaction.id]
+        );
+        
+        // Update user wallet balance
+        const existingWallet = await query(
+          'SELECT id FROM user_wallets WHERE user_id = $1',
+          [userId]
+        );
+        
+        if (existingWallet.rows.length > 0) {
+          // Update existing wallet
+          await query(
+            `UPDATE user_wallets 
+             SET available_balance = available_balance + $1, updated_at = NOW()
+             WHERE user_id = $2`,
+            [amountInPKR, userId]
+          );
+        } else {
+          // Create new wallet
+          await query(
+            `INSERT INTO user_wallets (user_id, available_balance, total_investment, total_tokens)
+             VALUES ($1, $2, $3, $4)`,
+            [userId, amountInPKR, 0, 0]
+          );
         }
-      });
-    } catch (error) {
-      await query('ROLLBACK');
-      throw error;
+        
+        await query('COMMIT');
+        
+        res.status(201).json({
+          success: true,
+          message: 'Deposit successful',
+          data: {
+            transactionId: transaction.id,
+            amount: transaction.amount,
+            currency: transaction.currency,
+            amountInPKR: transaction.amount_in_pkr,
+            status: 'completed'
+          }
+        });
+      } catch (error) {
+        await query('ROLLBACK');
+        throw error;
+      }
     }
   } catch (error) {
     console.error('Create deposit error:', error);
@@ -461,5 +510,129 @@ router.get('/balance/current', authenticateToken, async (req, res) => {
     });
   }
 });
+
+// Helper function to handle on-chain deposits
+async function handleOnChainDeposit(req, res) {
+  try {
+    const { userId, blockchain } = req.body;
+    
+    // Generate mock contract address based on blockchain
+    const mockAddresses = {
+      'ethereum': '0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6',
+      'polygon': '0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063',
+      'arbitrum': '0x912CE59144191C1204E64559FE8253a0e49E6548',
+      'bnb': '0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984'
+    };
+    
+    const contractAddress = mockAddresses[blockchain] || mockAddresses['ethereum'];
+    
+    // Generate QR code for the address
+    const QRCode = require('qrcode');
+    const qrCodeDataURL = await QRCode.toDataURL(contractAddress);
+    
+    res.json({
+      success: true,
+      message: 'On-chain deposit address generated',
+      data: {
+        blockchain,
+        contractAddress,
+        qrCode: qrCodeDataURL,
+        shareText: `Send funds to ${contractAddress} on ${blockchain} network`
+      }
+    });
+  } catch (error) {
+    console.error('On-chain deposit error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to generate on-chain deposit address',
+      message: error.message
+    });
+  }
+}
+
+// Helper function to handle third-party deposits (Binance Pay)
+async function handleThirdPartyDeposit(req, res) {
+  try {
+    const { userId, amount, currency = 'PKR', provider = 'binance' } = req.body;
+    
+    // Validate input
+    if (!amount || amount <= 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid amount'
+      });
+    }
+    
+    // Convert amount to PKR
+    const amountInPKR = convertToPKR(amount, currency);
+    const exchangeRate = getExchangeRate(currency, 'PKR');
+    
+    // Start transaction
+    await query('BEGIN');
+    
+    try {
+      // Create wallet transaction for third-party deposit
+      const transactionResult = await query(
+        `INSERT INTO wallet_transactions 
+         (user_id, transaction_type, amount, currency, exchange_rate, amount_in_pkr, description, status, metadata)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+         RETURNING id, amount, currency, amount_in_pkr, status, created_at`,
+        [userId, 'deposit', amount, currency, exchangeRate, amountInPKR, `${provider} deposit`, 'completed', JSON.stringify({ provider, type: 'thirdparty' })]
+      );
+      
+      const transaction = transactionResult.rows[0];
+      
+        // Update user wallet balance
+        const existingWallet = await query(
+          'SELECT id FROM user_wallets WHERE user_id = $1',
+          [userId]
+        );
+        
+        if (existingWallet.rows.length > 0) {
+          // Update existing wallet
+          await query(
+            `UPDATE user_wallets 
+             SET available_balance = available_balance + $1, 
+                 updated_at = NOW()
+             WHERE user_id = $2`,
+            [amountInPKR, userId]
+          );
+        } else {
+          // Create new wallet
+          await query(
+            `INSERT INTO user_wallets (user_id, available_balance, total_investment, total_tokens)
+             VALUES ($1, $2, $3, $4)`,
+            [userId, amountInPKR, 0, 0]
+          );
+        }
+      
+      await query('COMMIT');
+      
+      res.status(201).json({
+        success: true,
+        message: `${provider} deposit successful`,
+        data: {
+          transactionId: transaction.id,
+          amount: transaction.amount,
+          currency: transaction.currency,
+          amountInPKR: transaction.amount_in_pkr,
+          status: 'completed',
+          provider
+        }
+      });
+      
+    } catch (error) {
+      await query('ROLLBACK');
+      throw error;
+    }
+  } catch (error) {
+    console.error('Third-party deposit error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to process third-party deposit',
+      message: error.message
+    });
+  }
+}
 
 module.exports = router;

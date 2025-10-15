@@ -142,4 +142,175 @@ router.get('/summary/:userId', async (req, res) => {
   }
 });
 
+// Get user stats from portfolios table
+router.get('/stats/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // Get user stats from portfolios table
+    const result = await query(
+      `SELECT 
+        total_investment,
+        current_value,
+        total_roi,
+        active_investments,
+        total_investment_change,
+        total_investment_change_type,
+        current_value_change,
+        current_value_change_type,
+        total_roi_change,
+        total_roi_change_type,
+        active_investments_change,
+        active_investments_change_type,
+        created_at,
+        updated_at
+      FROM portfolios 
+      WHERE user_id = $1`,
+      [userId]
+    );
+
+    if (result.rows.length === 0) {
+      // Return default stats if no portfolio exists
+      return res.json({
+        success: true,
+        data: {
+          totalInvestment: 0,
+          currentValue: 0,
+          totalROI: 0,
+          totalTokens: 0,
+          activeInvestments: 0,
+          totalInvestmentChange: 0,
+          totalInvestmentChangeType: 'neutral',
+          currentValueChange: 0,
+          currentValueChangeType: 'neutral',
+          totalROIChange: 0,
+          totalROIChangeType: 'neutral',
+          activeInvestmentsChange: 0,
+          activeInvestmentsChangeType: 'neutral',
+          createdAt: null,
+          updatedAt: null
+        }
+      });
+    }
+
+    const stats = result.rows[0];
+    const totalInvestment = parseFloat(stats.total_investment);
+    const currentValue = parseFloat(stats.current_value);
+    const totalROI = parseFloat(stats.total_roi);
+    const activeInvestments = parseInt(stats.active_investments);
+
+    // Get total tokens from investments for this user
+    const tokensResult = await query(
+      `SELECT COALESCE(SUM(tokens_purchased), 0) as total_tokens
+       FROM investments 
+       WHERE user_id = $1 AND status = 'active'`,
+      [userId]
+    );
+    const totalTokens = parseInt(tokensResult.rows[0].total_tokens);
+
+    // Use actual database values for changes
+    const totalInvestmentChange = parseFloat(stats.total_investment_change);
+    const totalInvestmentChangeType = stats.total_investment_change_type;
+    const currentValueChange = parseFloat(stats.current_value_change);
+    const currentValueChangeType = stats.current_value_change_type;
+    const totalROIChange = parseFloat(stats.total_roi_change);
+    const totalROIChangeType = stats.total_roi_change_type;
+    const activeInvestmentsChange = parseInt(stats.active_investments_change);
+    const activeInvestmentsChangeType = stats.active_investments_change_type;
+
+    res.json({
+      success: true,
+      data: {
+        totalInvestment,
+        currentValue,
+        totalROI,
+        totalTokens,
+        activeInvestments,
+        totalInvestmentChange,
+        totalInvestmentChangeType,
+        currentValueChange,
+        currentValueChangeType,
+        totalROIChange,
+        totalROIChangeType,
+        activeInvestmentsChange,
+        activeInvestmentsChangeType,
+        createdAt: stats.created_at,
+        updatedAt: stats.updated_at
+      }
+    });
+
+  } catch (error) {
+    console.error('Get user stats error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to retrieve user stats',
+      message: error.message
+    });
+  }
+});
+
+// Update portfolio stats (for testing - you can remove this later)
+router.put('/stats/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const {
+      totalInvestmentChange,
+      totalInvestmentChangeType,
+      currentValueChange,
+      currentValueChangeType,
+      totalROIChange,
+      totalROIChangeType,
+      activeInvestmentsChange,
+      activeInvestmentsChangeType
+    } = req.body;
+
+    const result = await query(
+      `UPDATE portfolios SET 
+        total_investment_change = $1,
+        total_investment_change_type = $2,
+        current_value_change = $3,
+        current_value_change_type = $4,
+        total_roi_change = $5,
+        total_roi_change_type = $6,
+        active_investments_change = $7,
+        active_investments_change_type = $8,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE user_id = $9
+      RETURNING *`,
+      [
+        totalInvestmentChange,
+        totalInvestmentChangeType,
+        currentValueChange,
+        currentValueChangeType,
+        totalROIChange,
+        totalROIChangeType,
+        activeInvestmentsChange,
+        activeInvestmentsChangeType,
+        userId
+      ]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Portfolio not found for user'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Portfolio stats updated successfully',
+      data: result.rows[0]
+    });
+
+  } catch (error) {
+    console.error('Update portfolio stats error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update portfolio stats',
+      message: error.message
+    });
+  }
+});
+
 module.exports = router;
