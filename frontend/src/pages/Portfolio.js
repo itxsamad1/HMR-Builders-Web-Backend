@@ -214,7 +214,7 @@ const Portfolio = () => {
                 <Card className="p-4 text-center">
                   <Coins className="w-8 h-8 text-blue-600 mx-auto mb-2" />
                   <p className="text-2xl font-bold text-gray-900">
-                    {parseFloat(userStats.totalTokens || summary.totalTokens || portfolio.totalTokens || 0).toFixed(2)}
+                    {parseFloat(tokenHoldings.summary?.total_tokens || 0).toFixed(2)}
                   </p>
                   <p className="text-sm text-gray-600">Total Tokens</p>
                 </Card>
