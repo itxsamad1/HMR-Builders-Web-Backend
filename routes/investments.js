@@ -21,9 +21,9 @@ router.post('/', authenticateToken, async (req, res) => {
     await query('BEGIN');
 
     try {
-      // Check if property exists and has enough tokens (handle both UUID and slug)
+      // Check if property exists, is active, and has enough tokens (handle both UUID and slug)
       const propertyResult = await query(
-        'SELECT id, tokenization_available_tokens, tokenization_price_per_token FROM properties WHERE (id::text = $1 OR slug = $1) AND is_active = TRUE FOR UPDATE',
+        'SELECT id, tokenization_available_tokens, tokenization_price_per_token, status FROM properties WHERE (id::text = $1 OR slug = $1) AND is_active = TRUE FOR UPDATE',
         [propertyId]
       );
 
@@ -36,6 +36,15 @@ router.post('/', authenticateToken, async (req, res) => {
       }
 
       const property = propertyResult.rows[0];
+      
+      // Check if property status allows investments (only 'active' status)
+      if (property.status !== 'active') {
+        await query('ROLLBACK');
+        return res.status(400).json({
+          error: 'Investment not allowed',
+          message: 'Investments are only available for properties with active status'
+        });
+      }
       
       if (property.tokenization_available_tokens < tokensPurchased) {
         await query('ROLLBACK');

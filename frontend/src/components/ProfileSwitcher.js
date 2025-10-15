@@ -5,7 +5,7 @@ import Button from './ui/Button';
 import Card from './ui/Card';
 
 const ProfileSwitcher = () => {
-  const { currentUser, switchUser, users, loading, refreshUsers } = useUser();
+  const { currentUser, switchUser, users, usersLoading, usersError } = useUser();
   const [isOpen, setIsOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -29,9 +29,12 @@ const ProfileSwitcher = () => {
         variant="outline"
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 px-3 py-2"
+        disabled={usersLoading}
       >
         <User className="w-4 h-4" />
-        <span className="hidden sm:inline">{currentUser.name}</span>
+        <span className="hidden sm:inline">
+          {usersLoading ? 'Loading...' : currentUser?.name || 'Select User'}
+        </span>
         <ChevronDown className="w-4 h-4" />
       </Button>
 
@@ -39,27 +42,22 @@ const ProfileSwitcher = () => {
         <div className="absolute top-full right-0 mt-2 w-64 z-50">
           <Card className="p-4 shadow-lg">
             <div className="space-y-2">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="font-semibold text-sm text-gray-700">
-                  Switch Profile
-                </h3>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleRefresh}
-                  disabled={refreshing}
-                  className="p-1 h-6 w-6"
-                >
-                  <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} />
-                </Button>
-              </div>
-              {loading ? (
-                <div className="text-center py-4 text-sm text-gray-500">
-                  Loading users...
+              <h3 className="font-semibold text-sm text-gray-700 mb-3">
+                Switch Profile
+              </h3>
+              {usersLoading ? (
+                <div className="flex items-center justify-center py-4">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                  <span className="ml-2 text-sm text-gray-600">Loading users...</span>
+                </div>
+              ) : usersError ? (
+                <div className="text-center py-4">
+                  <p className="text-sm text-red-600">Failed to load users</p>
+                  <p className="text-xs text-gray-500 mt-1">Using fallback data</p>
                 </div>
               ) : users.length === 0 ? (
-                <div className="text-center py-4 text-sm text-gray-500">
-                  No users found
+                <div className="text-center py-4">
+                  <p className="text-sm text-gray-600">No users found</p>
                 </div>
               ) : (
                 users.map((user) => (

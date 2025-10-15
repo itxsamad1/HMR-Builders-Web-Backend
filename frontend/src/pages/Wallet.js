@@ -38,7 +38,7 @@ const Wallet = () => {
     console.log('Wallet: User changed to:', currentUser.name, 'ID:', userId);
     queryClient.invalidateQueries(['wallet-balance', userId]);
     queryClient.invalidateQueries(['wallet-transactions', userId]);
-    queryClient.invalidateQueries(['paymentMethods']);
+    queryClient.invalidateQueries(['paymentMethods', userId]);
   }, [userId, queryClient, currentUser.name]);
 
   const { register, handleSubmit, reset, formState: { errors }, watch } = useForm();
@@ -77,12 +77,12 @@ const Wallet = () => {
   // Fetch payment methods
   const { data: paymentMethodsData, isLoading: paymentMethodsLoading } = useQuery(
     ['paymentMethods', userId],
-    () => paymentMethodsAPI.getByUserId(userId),
+    () => paymentMethodsAPI.getAll(userId),
     { enabled: !!userId }
   );
 
   // Deposit mutation
-  const depositMutation = useMutation(walletTransactionsAPI.createDeposit, {
+  const depositMutation = useMutation((data) => walletTransactionsAPI.createDeposit({ ...data, userId }), {
     onSuccess: () => {
       queryClient.invalidateQueries(['wallet-balance', userId]);
       queryClient.invalidateQueries(['wallet-transactions', userId]);
@@ -92,7 +92,7 @@ const Wallet = () => {
   });
 
   // Withdraw mutation
-  const withdrawMutation = useMutation(walletTransactionsAPI.createWithdrawal, {
+  const withdrawMutation = useMutation((data) => walletTransactionsAPI.createWithdrawal({ ...data, userId }), {
     onSuccess: () => {
       queryClient.invalidateQueries(['wallet-balance', userId]);
       queryClient.invalidateQueries(['wallet-transactions', userId]);
@@ -118,7 +118,7 @@ const Wallet = () => {
   console.log('Wallet data:', wallet);
   console.log('Transactions data:', walletTransactionsData);
   console.log('Transactions array:', transactions);
-  console.log('Payment methods:', paymentMethods);
+  console.log('Payment methods for user', currentUser.name, '(', userId, '):', paymentMethods);
 
   const filteredTransactions = Array.isArray(transactions) ? transactions.filter(transaction => {
     if (filter === 'all') return true;

@@ -65,6 +65,7 @@ export const investmentsAPI = {
 
 // Users API (Complete)
 export const usersAPI = {
+  getAll: () => api.get('/users'),
   getProfile: () => api.get('/users/profile'),
   getProfileById: (userId) => api.get(`/users/profile/${userId}`),
   updateProfile: (profileData) => api.put('/users/profile', profileData),
@@ -81,8 +82,7 @@ export const usersAPI = {
 
 // Payment Methods API
 export const paymentMethodsAPI = {
-  getAll: () => api.get('/payment-methods'),
-  getByUserId: (userId) => api.get(`/payment-methods/user/${userId}`),
+  getAll: (userId) => api.get(`/payment-methods${userId ? `?userId=${userId}` : ''}`),
   create: (paymentData) => api.post('/payment-methods', paymentData),
   setDefault: (id) => api.put(`/payment-methods/${id}/default`),
   delete: (id) => api.delete(`/payment-methods/${id}`),
@@ -105,11 +105,29 @@ export const walletTransactionsAPI = {
 
 // Admin API (Complete)
 export const adminAPI = {
+  // Dashboard
   getDashboard: () => api.get('/admin/dashboard'),
-  getUsers: (params) => api.get('/admin/users', { params }),
-  getProperties: (params) => api.get('/admin/properties', { params }),
-  getInvestments: (params) => api.get('/admin/investments', { params }),
   getAnalytics: () => api.get('/admin/analytics'),
+  
+  // Users CRUD
+  getUsers: (params) => api.get('/admin/users', { params }),
+  getUser: (id) => api.get(`/admin/users/${id}`),
+  createUser: (data) => api.post('/admin/users', data),
+  updateUser: (id, data) => api.put(`/admin/users/${id}`, data),
+  deleteUser: (id) => api.delete(`/admin/users/${id}`),
+  updateUserStatus: (id, data) => api.patch(`/admin/users/${id}/status`, data),
+  
+  // Properties CRUD
+  getProperties: (params) => api.get('/admin/properties', { params }),
+  getProperty: (id) => api.get(`/admin/properties/${id}`),
+  createProperty: (data) => api.post('/admin/properties', data),
+  updateProperty: (id, data) => api.put(`/admin/properties/${id}`, data),
+  deleteProperty: (id) => api.delete(`/admin/properties/${id}`),
+  updatePropertyStatus: (id, data) => api.patch(`/admin/properties/${id}/status`, data),
+  
+  // Other
+  getInvestments: (params) => api.get('/admin/investments', { params }),
+  getTransactions: (params) => api.get('/admin/transactions', { params }),
 };
 
 // Portfolio API (Mobile Optimized)
@@ -145,6 +163,19 @@ export const walletAPI = {
 // Docs API
 export const docsAPI = {
   getDocs: () => api.get('/docs'),
+};
+
+// KYC API
+export const kycAPI = {
+  submitKYC: (kycData) => api.post('/kyc/submit', kycData),
+  uploadImage: (formData) => api.post('/kyc/upload-image', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  }),
+  getKYCStatus: (userId) => api.get(`/kyc/status/${userId}`),
+  updateKYCStatus: (kycId, statusData) => api.patch(`/kyc/update-status/${kycId}`, statusData),
+  detectCardType: (cardNumber) => api.post('/kyc/detect-card-type', { cardNumber }),
 };
 
 export default api;
