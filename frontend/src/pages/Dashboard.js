@@ -28,12 +28,12 @@ import { demoUser, demoPortfolio, demoWallet, demoTransactions } from '../servic
 
 const Dashboard = () => {
   const { currentUser } = useUser();
-  const userId = currentUser.id;
+  const userId = currentUser?.id;
   const queryClient = useQueryClient();
 
   // Invalidate queries when user changes
   useEffect(() => {
-    console.log('User changed to:', currentUser.name, 'ID:', userId);
+    console.log('User changed to:', currentUser?.name, 'ID:', userId);
     queryClient.invalidateQueries(['portfolio', userId]);
     queryClient.invalidateQueries(['portfolio-summary', userId]);
     queryClient.invalidateQueries(['profile', userId]);
@@ -41,7 +41,7 @@ const Dashboard = () => {
     queryClient.invalidateQueries(['wallet', userId]);
     queryClient.invalidateQueries(['transactions', userId]);
     queryClient.invalidateQueries(['featured-properties']);
-  }, [userId, queryClient, currentUser.name]);
+  }, [userId, queryClient, currentUser?.name]);
 
   // Fetch dashboard data
   const { data: portfolioData, isLoading: portfolioLoading, error: portfolioError } = useQuery(
@@ -50,10 +50,10 @@ const Dashboard = () => {
     { 
       enabled: !!userId,
       onSuccess: (data) => {
-        console.log('Portfolio data for', currentUser.name, ':', data);
+        console.log('Portfolio data for', currentUser?.name, ':', data);
       },
       onError: (error) => {
-        console.error('Portfolio error for', currentUser.name, ':', error);
+        console.error('Portfolio error for', currentUser?.name, ':', error);
       }
     }
   );
@@ -70,10 +70,10 @@ const Dashboard = () => {
     { 
       enabled: !!userId,
       onSuccess: (data) => {
-        console.log('Profile data for', currentUser.name, ':', data);
+        console.log('Profile data for', currentUser?.name, ':', data);
       },
       onError: (error) => {
-        console.error('Profile error for', currentUser.name, ':', error);
+        console.error('Profile error for', currentUser?.name, ':', error);
       }
     }
   );
@@ -130,7 +130,7 @@ const Dashboard = () => {
             <div className="flex justify-center items-center h-64">
               <div className="text-center">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-                <p className="text-gray-600">Loading dashboard for {currentUser.name}...</p>
+                <p className="text-gray-600">Loading dashboard for {currentUser?.name}...</p>
                 <p className="text-sm text-gray-500 mt-2">User ID: {userId}</p>
               </div>
             </div>
@@ -175,6 +175,20 @@ const Dashboard = () => {
       icon: Building2,
     },
   ];
+
+  // Early return if no user is selected
+  if (!currentUser) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading user data...</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>

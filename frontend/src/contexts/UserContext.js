@@ -72,7 +72,8 @@ export const UserProvider = ({ children }) => {
     switchUser,
     users,
     usersLoading,
-    usersError
+    usersError,
+    refreshUsers
   };
 
   return (

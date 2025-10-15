@@ -12,8 +12,7 @@ import {
   CheckCircle, 
   AlertCircle,
   Coins,
-  CreditCard,
-  Zap
+  CreditCard
 } from 'lucide-react';
 
 const OnChainDeposit = ({ userId, onDepositSuccess, onClose }) => {
@@ -58,7 +57,8 @@ const OnChainDeposit = ({ userId, onDepositSuccess, onClose }) => {
   };
 
   const handleCopyAddress = () => {
-    navigator.clipboard.writeText(onChainData.contractAddress);
+    const address = onChainData.depositAddress || '0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6';
+    navigator.clipboard.writeText(address);
     // You could add a toast notification here
   };
 
@@ -85,11 +85,13 @@ const OnChainDeposit = ({ userId, onDepositSuccess, onClose }) => {
     setError('');
 
     try {
+      // Direct deposit without QR code generation
       const response = await walletTransactionsAPI.createThirdPartyDeposit({
         userId,
         amount: parseFloat(binanceAmount),
         currency: 'PKR',
-        provider: 'binance'
+        provider: 'binance',
+        action: 'complete'
       });
 
       if (response.data.success) {
@@ -110,6 +112,7 @@ const OnChainDeposit = ({ userId, onDepositSuccess, onClose }) => {
       setLoading(false);
     }
   };
+
 
   const renderBlockchainSelection = () => (
     <div className="space-y-6">
@@ -149,7 +152,7 @@ const OnChainDeposit = ({ userId, onDepositSuccess, onClose }) => {
   );
 
   const renderOnChainDeposit = () => (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="text-center">
         <h3 className="text-lg font-semibold text-gray-900 mb-2">On-Chain Deposit</h3>
         <p className="text-gray-600">Send funds to the address below</p>
@@ -157,11 +160,11 @@ const OnChainDeposit = ({ userId, onDepositSuccess, onClose }) => {
 
       {/* QR Code */}
       <div className="text-center">
-        <div className="inline-block p-4 bg-white border border-gray-200 rounded-lg">
+        <div className="inline-block p-3 bg-white border border-gray-200 rounded-lg">
           <img 
             src={onChainData.qrCode} 
             alt="QR Code" 
-            className="w-48 h-48"
+            className="w-32 h-32"
           />
         </div>
       </div>
@@ -171,7 +174,7 @@ const OnChainDeposit = ({ userId, onDepositSuccess, onClose }) => {
         <label className="block text-sm font-medium text-gray-700">Contract Address</label>
         <div className="flex items-center space-x-2">
           <Input
-            value={onChainData.contractAddress}
+            value={onChainData.depositAddress || '0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6'}
             readOnly
             className="font-mono text-sm"
           />
@@ -197,7 +200,7 @@ const OnChainDeposit = ({ userId, onDepositSuccess, onClose }) => {
       </Button>
 
       {/* Instructions */}
-      <div className="bg-blue-50 p-4 rounded-lg">
+      <div className="bg-blue-50 p-3 rounded-lg">
         <div className="flex items-start space-x-2">
           <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5" />
           <div className="text-sm text-blue-800">
@@ -263,7 +266,7 @@ const OnChainDeposit = ({ userId, onDepositSuccess, onClose }) => {
 
       <div className="bg-yellow-50 p-4 rounded-lg">
         <div className="flex items-start space-x-2">
-          <Zap className="h-5 w-5 text-yellow-600 mt-0.5" />
+          <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5" />
           <div className="text-sm text-yellow-800">
             <p className="font-medium mb-1">Mock Integration:</p>
             <p>This is a demo version. In production, this would connect to real Binance Pay API.</p>
@@ -290,9 +293,10 @@ const OnChainDeposit = ({ userId, onDepositSuccess, onClose }) => {
     </div>
   );
 
+
   return (
-    <Card className="p-6">
-      <div className="flex justify-between items-center mb-6">
+    <Card className="p-4">
+      <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-semibold text-gray-900">On-Chain & Third-Party Deposit</h2>
         <Button
           onClick={onClose}

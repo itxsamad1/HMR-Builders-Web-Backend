@@ -5,7 +5,7 @@ import Button from './ui/Button';
 import Card from './ui/Card';
 
 const ProfileSwitcher = () => {
-  const { currentUser, switchUser, users, usersLoading, usersError } = useUser();
+  const { currentUser, switchUser, users, usersLoading, usersError, refreshUsers } = useUser();
   const [isOpen, setIsOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 

@@ -90,7 +90,7 @@ router.get('/user/:userId', async (req, res) => {
 router.post('/deposit', async (req, res) => {
   try {
     const userId = req.body.userId || 'a6702919-c381-4ebe-881a-4c3045d5f551'; // Get from request or use default for demo
-    const { amount, currency = 'PKR', paymentMethodId, description } = req.body;
+    const { amount, currency = 'PKR', paymentMethodId, description, provider, action } = req.body;
     
     // Validate input
     if (!amount || amount <= 0) {
@@ -98,6 +98,11 @@ router.post('/deposit', async (req, res) => {
         success: false,
         error: 'Invalid amount'
       });
+    }
+    
+    // Handle third-party deposits (Binance Pay, etc.)
+    if (provider) {
+      return await handleThirdPartyDeposit(req, res);
     }
     
     if (!paymentMethodId) {
@@ -127,57 +132,11 @@ router.post('/deposit', async (req, res) => {
     if (paymentMethod.rows[0].status !== 'active') {
       return res.status(400).json({
         success: false,
-        error: 'User ID is required'
+        error: 'Payment method is not active'
       });
     }
     
-    // Handle different deposit types
-    if (type === 'onchain') {
-      return handleOnChainDeposit(req, res);
-    } else if (type === 'thirdparty') {
-      return handleThirdPartyDeposit(req, res);
-    } else {
-      // Default debit card deposit logic - validate input only for debit card deposits
-      if (!amount || amount <= 0) {
-        return res.status(400).json({
-          success: false,
-          error: 'Invalid amount'
-        });
-      }
-      
-      if (!paymentMethodId) {
-        return res.status(400).json({
-          success: false,
-          error: 'Payment method is required'
-        });
-      }
-      
-      // Verify payment method belongs to user and is verified
-      const paymentMethod = await query(
-        'SELECT id, is_verified, status FROM payment_methods WHERE id = $1 AND user_id = $2',
-        [paymentMethodId, userId]
-      );
-      
-      if (paymentMethod.rows.length === 0) {
-        return res.status(404).json({
-          success: false,
-          error: 'Payment method not found'
-        });
-      }
-      
-      if (!paymentMethod.rows[0].is_verified) {
-        return res.status(400).json({
-          success: false,
-          error: 'Payment method must be verified before use'
-        });
-      }
-      
-      if (paymentMethod.rows[0].status !== 'active') {
-        return res.status(400).json({
-          success: false,
-          error: 'Payment method is not active'
-        });
-      }
+    // Process debit card deposit
       
       // Convert amount to PKR
       const amountInPKR = convertToPKR(amount, currency);
@@ -247,7 +206,6 @@ router.post('/deposit', async (req, res) => {
         await query('ROLLBACK');
         throw error;
       }
-    }
   } catch (error) {
     console.error('Create deposit error:', error);
     res.status(500).json({
@@ -511,6 +469,25 @@ router.get('/balance/current', authenticateToken, async (req, res) => {
   }
 });
 
+// Helper function to generate mock deposit addresses
+function generateMockDepositAddress(provider) {
+  const mockAddresses = {
+    // Blockchain addresses for on-chain deposits
+    'ethereum': '0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6',
+    'polygon': '0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6',
+    'arbitrum': '0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6',
+    'bsc': '0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6',
+    'binance-smart-chain': '0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6',
+    // Third-party payment providers
+    'binance': 'TQn9Y2khEsLJW1ChVWFMSMeRDow5KcbLSE', // Mock Binance Pay address
+    'binance-pay': 'TQn9Y2khEsLJW1ChVWFMSMeRDow5KcbLSE',
+    'paypal': 'paypal.me/hmrbuilders/mock',
+    'stripe': 'stripe.com/pay/hmrbuilders/mock'
+  };
+  
+  return mockAddresses[provider] || mockAddresses['ethereum'];
+}
+
 // Helper function to handle on-chain deposits
 async function handleOnChainDeposit(req, res) {
   try {
@@ -553,7 +530,7 @@ async function handleOnChainDeposit(req, res) {
 // Helper function to handle third-party deposits (Binance Pay)
 async function handleThirdPartyDeposit(req, res) {
   try {
-    const { userId, amount, currency = 'PKR', provider = 'binance' } = req.body;
+    const { userId, amount, currency = 'PKR', provider = 'binance', action = 'generate' } = req.body;
     
     // Validate input
     if (!amount || amount <= 0) {
@@ -563,24 +540,102 @@ async function handleThirdPartyDeposit(req, res) {
       });
     }
     
-    // Convert amount to PKR
-    const amountInPKR = convertToPKR(amount, currency);
-    const exchangeRate = getExchangeRate(currency, 'PKR');
-    
-    // Start transaction
-    await query('BEGIN');
-    
-    try {
-      // Create wallet transaction for third-party deposit
+    // If action is 'generate', create deposit address and QR code (for on-chain deposits)
+    if (action === 'generate') {
+      // Generate mock deposit address for Binance Pay
+      const mockDepositAddress = generateMockDepositAddress(provider);
+      
+      // Generate QR code for the deposit address
+      const QRCode = require('qrcode');
+      const qrCodeDataURL = await QRCode.toDataURL(mockDepositAddress);
+      
+      // Convert amount to PKR for storage
+      const amountInPKR = convertToPKR(amount, currency);
+      
+      // Store pending transaction in database
       const transactionResult = await query(
         `INSERT INTO wallet_transactions 
-         (user_id, transaction_type, amount, currency, exchange_rate, amount_in_pkr, description, status, metadata)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-         RETURNING id, amount, currency, amount_in_pkr, status, created_at`,
-        [userId, 'deposit', amount, currency, exchangeRate, amountInPKR, `${provider} deposit`, 'completed', JSON.stringify({ provider, type: 'thirdparty' })]
+         (user_id, transaction_type, amount, currency, amount_in_pkr, description, status, metadata)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+         RETURNING id, amount, currency, status, created_at`,
+        [userId, 'deposit', amount, currency, amountInPKR, `${provider} deposit (pending)`, 'pending', JSON.stringify({ 
+          provider, 
+          type: 'thirdparty', 
+          depositAddress: mockDepositAddress,
+          action: 'generate'
+        })]
       );
       
       const transaction = transactionResult.rows[0];
+      
+      res.json({
+        success: true,
+        message: 'Deposit address generated successfully',
+        data: {
+          transactionId: transaction.id,
+          depositAddress: mockDepositAddress,
+          qrCode: qrCodeDataURL,
+          amount: amount,
+          currency: currency,
+          provider: provider,
+          shareText: `Send ${amount} ${currency} to ${mockDepositAddress} via ${provider}`
+        }
+      });
+      return;
+    }
+    
+    // If action is 'complete', process the deposit
+    if (action === 'complete') {
+      const { transactionId } = req.body;
+      
+      // Convert amount to PKR
+      const amountInPKR = convertToPKR(amount, currency);
+      const exchangeRate = getExchangeRate(currency, 'PKR');
+      
+      // Start transaction
+      await query('BEGIN');
+      
+      try {
+        let transaction;
+        
+        if (transactionId) {
+          // Update existing pending transaction
+          const updateResult = await query(
+            `UPDATE wallet_transactions 
+             SET status = 'completed', 
+                 exchange_rate = $1, 
+                 amount_in_pkr = $2,
+                 updated_at = NOW()
+             WHERE id = $3 AND user_id = $4 AND status = 'pending'
+             RETURNING id, amount, currency, amount_in_pkr, status, created_at`,
+            [exchangeRate, amountInPKR, transactionId, userId]
+          );
+          
+          if (updateResult.rows.length === 0) {
+            await query('ROLLBACK');
+            return res.status(404).json({
+              success: false,
+              error: 'Transaction not found or already processed'
+            });
+          }
+          
+          transaction = updateResult.rows[0];
+        } else {
+          // Create new completed transaction (for direct deposits like Binance Pay)
+          const transactionResult = await query(
+            `INSERT INTO wallet_transactions 
+             (user_id, transaction_type, amount, currency, exchange_rate, amount_in_pkr, description, status, metadata)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+             RETURNING id, amount, currency, amount_in_pkr, status, created_at`,
+            [userId, 'deposit', amount, currency, exchangeRate, amountInPKR, `${provider} deposit`, 'completed', JSON.stringify({ 
+              provider, 
+              type: 'thirdparty', 
+              action: 'complete'
+            })]
+          );
+          
+          transaction = transactionResult.rows[0];
+        }
       
         // Update user wallet balance
         const existingWallet = await query(
@@ -621,9 +676,10 @@ async function handleThirdPartyDeposit(req, res) {
         }
       });
       
-    } catch (error) {
-      await query('ROLLBACK');
-      throw error;
+      } catch (error) {
+        await query('ROLLBACK');
+        throw error;
+      }
     }
   } catch (error) {
     console.error('Third-party deposit error:', error);

@@ -99,7 +99,13 @@ export const walletTransactionsAPI = {
   getBalance: () => api.get('/wallet-transactions/balance/current'),
   getByUserId: (userId, params) => api.get(`/wallet-transactions/user/${userId}`, { params }),
   // New on-chain and third-party deposit methods
-  createOnChainDeposit: (data) => api.post('/wallet-transactions/deposit', { ...data, type: 'onchain' }),
+  createOnChainDeposit: (data) => api.post('/wallet-transactions/deposit', { 
+    userId: data.userId,
+    provider: data.blockchain,
+    action: 'generate',
+    amount: 1000, // Default amount for address generation
+    currency: 'PKR'
+  }),
   createThirdPartyDeposit: (data) => api.post('/wallet-transactions/deposit', { ...data, type: 'thirdparty' }),
 };
 
