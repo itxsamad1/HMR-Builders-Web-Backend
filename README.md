@@ -2,6 +2,17 @@
 
 A comprehensive Node.js Express backend API for the HMR Builders real estate tokenization platform. This backend provides authentication, property management, investment tracking, and admin functionality.
 
+## 📚 Documentation
+
+**New!** Comprehensive business logic documentation is now available:
+
+- **[📖 BUSINESS_LOGIC.md](./BUSINESS_LOGIC.md)** - Complete business logic guide with detailed explanations
+- **[🎨 FLOWCHARTS.md](./FLOWCHARTS.md)** - Visual flowcharts and interaction diagrams (Mermaid)
+- **[⚡ QUICK_REFERENCE.md](./QUICK_REFERENCE.md)** - Fast developer reference and cheat sheet
+- **[📋 README_DOCS.md](./README_DOCS.md)** - Documentation guide and how to use these resources
+
+These documents provide a comprehensive understanding of the entire platform's business logic, workflows, and architecture.
+
 ## 🚀 Features
 
 - **Authentication & Authorization**
