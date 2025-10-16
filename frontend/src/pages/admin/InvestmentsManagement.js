@@ -4,15 +4,15 @@ import {
   Search, 
   Filter, 
   Eye, 
-  DollarSign,
   TrendingUp,
-  TrendingDown,
-  Clock,
-  CheckCircle,
-  XCircle,
-  Calendar,
+  Building2,
   User,
-  Building2
+  DollarSign,
+  Calendar,
+  CheckCircle,
+  Clock,
+  XCircle,
+  AlertTriangle
 } from 'lucide-react';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
@@ -20,21 +20,21 @@ import Badge from '../../components/ui/Badge';
 import { adminAPI } from '../../services/api';
 import { useAdminAuth } from '../../components/admin/AdminAuth';
 
-const TransactionsManagement = () => {
+const InvestmentsManagement = () => {
   const { isAuthenticated } = useAdminAuth();
   const [filters, setFilters] = useState({
     search: '',
     status: '',
-    transaction_type: '',
+    property: '',
     sort_by: 'created_at',
     sort_order: 'desc'
   });
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Fetch transactions
-  const { data: transactionsData, isLoading, error } = useQuery(
-    ['admin-transactions', filters, currentPage],
-    () => adminAPI.getTransactions({
+  // Fetch investments
+  const { data: investmentsData, isLoading, error } = useQuery(
+    ['admin-investments', filters, currentPage],
+    () => adminAPI.getInvestments({
       ...filters,
       page: currentPage,
       limit: 10
@@ -44,8 +44,8 @@ const TransactionsManagement = () => {
     }
   );
 
-  const transactions = transactionsData?.data?.data?.transactions || transactionsData?.data?.transactions || [];
-  const pagination = transactionsData?.data?.data?.pagination || transactionsData?.data?.pagination || {};
+  const investments = investmentsData?.data?.data?.investments || investmentsData?.data?.investments || [];
+  const pagination = investmentsData?.data?.data?.pagination || investmentsData?.data?.pagination || {};
 
   const handleFilterChange = (key, value) => {
     setFilters(prev => ({ ...prev, [key]: value }));
@@ -54,20 +54,13 @@ const TransactionsManagement = () => {
 
   const getStatusBadge = (status) => {
     const statusMap = {
+      'active': { variant: 'success', text: 'Active', icon: CheckCircle },
       'pending': { variant: 'warning', text: 'Pending', icon: Clock },
       'completed': { variant: 'success', text: 'Completed', icon: CheckCircle },
-      'failed': { variant: 'danger', text: 'Failed', icon: XCircle },
-      'cancelled': { variant: 'default', text: 'Cancelled', icon: XCircle }
+      'cancelled': { variant: 'danger', text: 'Cancelled', icon: XCircle },
+      'failed': { variant: 'danger', text: 'Failed', icon: XCircle }
     };
     return statusMap[status] || { variant: 'default', text: status, icon: Clock };
-  };
-
-  const getTransactionTypeIcon = (type) => {
-    return type === 'deposit' ? TrendingUp : TrendingDown;
-  };
-
-  const getTransactionTypeColor = (type) => {
-    return type === 'deposit' ? 'text-green-600' : 'text-red-600';
   };
 
   const formatPrice = (amount, currency = 'PKR') => {
@@ -95,7 +88,7 @@ const TransactionsManagement = () => {
   if (!isAuthenticated) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-600">Please log in to view transactions.</p>
+        <p className="text-gray-600">Please log in to view investments.</p>
       </div>
     );
   }
@@ -104,7 +97,7 @@ const TransactionsManagement = () => {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        <span className="ml-2 text-gray-600">Loading transactions...</span>
+        <span className="ml-2 text-gray-600">Loading investments...</span>
       </div>
     );
   }
@@ -112,7 +105,7 @@ const TransactionsManagement = () => {
   if (error) {
     return (
       <div className="text-center py-12">
-        <p className="text-red-600">Failed to load transactions</p>
+        <p className="text-red-600">Failed to load investments</p>
         <Button onClick={() => window.location.reload()} className="mt-4">
           Retry
         </Button>
@@ -125,8 +118,8 @@ const TransactionsManagement = () => {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Transactions Management</h2>
-          <p className="text-gray-600">Monitor all financial transactions</p>
+          <h2 className="text-2xl font-bold text-gray-900">Investments Management</h2>
+          <p className="text-gray-600">Monitor all property investments</p>
         </div>
       </div>
 
@@ -138,9 +131,9 @@ const TransactionsManagement = () => {
               <TrendingUp className="w-6 h-6 text-green-600" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Total Deposits</p>
+              <p className="text-sm font-medium text-gray-600">Total Investments</p>
               <p className="text-2xl font-bold text-gray-900">
-                {formatPrice(transactionsData?.data?.data?.summary?.totalDeposits || transactionsData?.data?.summary?.totalDeposits || 0)}
+                {formatPrice(investmentsData?.data?.data?.summary?.totalAmount || investmentsData?.data?.summary?.totalAmount || 0)}
               </p>
             </div>
           </div>
@@ -148,13 +141,13 @@ const TransactionsManagement = () => {
 
         <Card className="p-6">
           <div className="flex items-center">
-            <div className="p-2 bg-red-100 rounded-lg">
-              <TrendingDown className="w-6 h-6 text-red-600" />
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <Building2 className="w-6 h-6 text-blue-600" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Total Withdrawals</p>
+              <p className="text-sm font-medium text-gray-600">Active Investments</p>
               <p className="text-2xl font-bold text-gray-900">
-                {formatPrice(transactionsData?.data?.data?.summary?.totalWithdrawals || transactionsData?.data?.summary?.totalWithdrawals || 0)}
+                {investmentsData?.data?.data?.summary?.activeCount || investmentsData?.data?.summary?.activeCount || 0}
               </p>
             </div>
           </div>
@@ -168,7 +161,7 @@ const TransactionsManagement = () => {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Pending</p>
               <p className="text-2xl font-bold text-gray-900">
-                {transactionsData?.data?.data?.summary?.pendingCount || transactionsData?.data?.summary?.pendingCount || 0}
+                {investmentsData?.data?.data?.summary?.pendingCount || investmentsData?.data?.summary?.pendingCount || 0}
               </p>
             </div>
           </div>
@@ -176,13 +169,13 @@ const TransactionsManagement = () => {
 
         <Card className="p-6">
           <div className="flex items-center">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <DollarSign className="w-6 h-6 text-blue-600" />
+            <div className="p-2 bg-purple-100 rounded-lg">
+              <User className="w-6 h-6 text-purple-600" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Net Volume</p>
+              <p className="text-sm font-medium text-gray-600">Total Investors</p>
               <p className="text-2xl font-bold text-gray-900">
-                {formatPrice(transactionsData?.data?.data?.summary?.netVolume || transactionsData?.data?.summary?.netVolume || 0)}
+                {investmentsData?.data?.data?.summary?.totalInvestors || investmentsData?.data?.summary?.totalInvestors || 0}
               </p>
             </div>
           </div>
@@ -198,7 +191,7 @@ const TransactionsManagement = () => {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search transactions..."
+                placeholder="Search investments..."
                 value={filters.search}
                 onChange={(e) => handleFilterChange('search', e.target.value)}
                 className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -214,23 +207,25 @@ const TransactionsManagement = () => {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="">All Status</option>
+              <option value="active">Active</option>
               <option value="pending">Pending</option>
               <option value="completed">Completed</option>
-              <option value="failed">Failed</option>
               <option value="cancelled">Cancelled</option>
+              <option value="failed">Failed</option>
             </select>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Property</label>
             <select
-              value={filters.transaction_type}
-              onChange={(e) => handleFilterChange('transaction_type', e.target.value)}
+              value={filters.property}
+              onChange={(e) => handleFilterChange('property', e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
-              <option value="">All Types</option>
-              <option value="deposit">Deposit</option>
-              <option value="withdrawal">Withdrawal</option>
+              <option value="">All Properties</option>
+              <option value="hmr-waterfront-towers">HMR Waterfront Towers</option>
+              <option value="creek-vista-residences">Creek Vista Residences</option>
+              <option value="techno">Techno</option>
             </select>
           </div>
 
@@ -242,8 +237,9 @@ const TransactionsManagement = () => {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="created_at">Date</option>
-              <option value="amount_in_pkr">Amount</option>
+              <option value="investment_amount">Amount</option>
               <option value="status">Status</option>
+              <option value="property_title">Property</option>
             </select>
           </div>
 
@@ -261,23 +257,26 @@ const TransactionsManagement = () => {
         </div>
       </Card>
 
-      {/* Transactions Table */}
+      {/* Investments Table */}
       <Card className="overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Transaction
+                  Investment
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  User
+                  Investor
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Type
+                  Property
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Amount
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Tokens
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
@@ -291,26 +290,25 @@ const TransactionsManagement = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {transactions.map((transaction) => {
-                const statusInfo = getStatusBadge(transaction.status);
-                const TypeIcon = getTransactionTypeIcon(transaction.transaction_type);
+              {investments.map((investment) => {
+                const statusInfo = getStatusBadge(investment.status);
                 const StatusIcon = statusInfo.icon;
 
                 return (
-                  <tr key={transaction.id} className="hover:bg-gray-50">
+                  <tr key={investment.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="flex-shrink-0 h-10 w-10">
                           <div className="h-10 w-10 rounded-lg bg-gray-200 flex items-center justify-center">
-                            <DollarSign className="w-5 h-5 text-gray-600" />
+                            <TrendingUp className="w-5 h-5 text-gray-600" />
                           </div>
                         </div>
                         <div className="ml-4">
                           <div className="text-sm font-medium text-gray-900">
-                            {transaction.id.slice(0, 8)}...
+                            {investment.id.slice(0, 8)}...
                           </div>
                           <div className="text-sm text-gray-500">
-                            {transaction.description || 'No description'}
+                            Investment
                           </div>
                         </div>
                       </div>
@@ -324,22 +322,32 @@ const TransactionsManagement = () => {
                         </div>
                         <div className="ml-3">
                           <div className="text-sm font-medium text-gray-900">
-                            {transaction.user_name || 'Unknown User'}
+                            {investment.user_name || 'Unknown User'}
                           </div>
                           <div className="text-sm text-gray-500">
-                            {transaction.user_email}
+                            {investment.user_email}
                           </div>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className={`flex items-center text-sm ${getTransactionTypeColor(transaction.transaction_type)}`}>
-                        <TypeIcon className="w-4 h-4 mr-2" />
-                        {transaction.transaction_type}
+                      <div className="flex items-center">
+                        <Building2 className="w-4 h-4 mr-2 text-gray-400" />
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">
+                            {investment.property_title}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            {investment.property_slug}
+                          </div>
+                        </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {formatPrice(transaction.amount_in_pkr, transaction.currency)}
+                      {formatPrice(investment.investment_amount)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {investment.tokens_purchased?.toLocaleString()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <Badge variant={statusInfo.variant} className="flex items-center">
@@ -350,7 +358,7 @@ const TransactionsManagement = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       <div className="flex items-center">
                         <Calendar className="w-3 h-3 mr-2 text-gray-400" />
-                        {formatDate(transaction.created_at)}
+                        {formatDate(investment.created_at)}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -395,10 +403,10 @@ const TransactionsManagement = () => {
                   </span>{' '}
                   to{' '}
                   <span className="font-medium">
-                    {Math.min(currentPage * 10, pagination.totalTransactions)}
+                    {Math.min(currentPage * 10, pagination.totalInvestments)}
                   </span>{' '}
                   of{' '}
-                  <span className="font-medium">{pagination.totalTransactions}</span>{' '}
+                  <span className="font-medium">{pagination.totalInvestments}</span>{' '}
                   results
                 </p>
               </div>
@@ -427,4 +435,4 @@ const TransactionsManagement = () => {
   );
 };
 
-export default TransactionsManagement;
+export default InvestmentsManagement;

@@ -126,6 +126,7 @@ export const adminAPI = {
   // Properties CRUD
   getProperties: (params) => api.get('/admin/properties', { params }),
   getProperty: (id) => api.get(`/admin/properties/${id}`),
+  getPropertyDetail: (id) => api.get(`/admin/properties/${id}/detail`),
   createProperty: (data) => api.post('/admin/properties', data),
   updateProperty: (id, data) => api.put(`/admin/properties/${id}`, data),
   deleteProperty: (id) => api.delete(`/admin/properties/${id}`),

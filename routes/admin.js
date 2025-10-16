@@ -121,6 +121,7 @@ router.get('/users', async (req, res) => {
       search = '', 
       status = '', 
       kyc_status = '',
+      include_inactive = false,
       sort_by = 'created_at',
       sort_order = 'desc'
     } = req.query;
@@ -142,6 +143,11 @@ router.get('/users', async (req, res) => {
       paramCount++;
       whereClause += ` AND is_active = $${paramCount}`;
       params.push(status === 'active');
+    } else if (!include_inactive) {
+      // By default, only show active users (unless specifically requesting inactive)
+      paramCount++;
+      whereClause += ` AND is_active = $${paramCount}`;
+      params.push(true);
     }
 
     // Add KYC status filter
@@ -1058,6 +1064,124 @@ router.patch('/properties/:id/status', async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to update property status',
+      message: error.message
+    });
+  }
+});
+
+// Get comprehensive property details
+router.get('/properties/:id/detail', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Get basic property information
+    const propertyResult = await query(
+      `SELECT 
+        id, title, slug, property_type, status, description, 
+        pricing_total_value, pricing_min_investment, pricing_expected_roi,
+        tokenization_total_tokens, tokenization_available_tokens, tokenization_price_per_token,
+        location_address, location_city, location_latitude, location_longitude,
+        construction_progress, total_units, project_type,
+        is_featured, is_active, created_at, updated_at
+       FROM properties WHERE id = $1`,
+      [id]
+    );
+
+    if (propertyResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Property not found'
+      });
+    }
+
+    const property = propertyResult.rows[0];
+
+    // Get investments data (if investments table exists)
+    let investmentsResult = { rows: [] };
+    try {
+      investmentsResult = await query(
+        `SELECT 
+          i.id, i.investment_amount, i.tokens_purchased, i.created_at,
+          u.name as user_name, u.email as user_email
+         FROM investments i
+         JOIN users u ON i.user_id = u.id
+         WHERE i.property_id = $1
+         ORDER BY i.created_at DESC`,
+        [id]
+      );
+    } catch (error) {
+      console.log('Investments table not found, skipping...');
+    }
+
+    // Get token purchases data (if table exists)
+    let tokenPurchasesResult = { rows: [] };
+    try {
+      tokenPurchasesResult = await query(
+        `SELECT 
+          ptp.id, ptp.tokens_purchased, ptp.amount, ptp.created_at,
+          u.name as user_name, u.email as user_email
+         FROM property_token_purchases ptp
+         JOIN users u ON ptp.user_id = u.id
+         WHERE ptp.property_id = $1
+         ORDER BY ptp.created_at DESC`,
+        [id]
+      );
+    } catch (error) {
+      console.log('Property token purchases table not found, skipping...');
+    }
+
+    // Get token transactions data (if table exists)
+    let tokenTransactionsResult = { rows: [] };
+    try {
+      tokenTransactionsResult = await query(
+        `SELECT 
+          tt.id, tt.transaction_type, tt.amount, tt.created_at, tt.status
+         FROM token_transactions tt
+         WHERE tt.property_id = $1
+         ORDER BY tt.created_at DESC`,
+        [id]
+      );
+    } catch (error) {
+      console.log('Token transactions table not found, skipping...');
+    }
+
+    // Calculate metrics
+    const totalInvestment = investmentsResult.rows.reduce((sum, inv) => sum + parseFloat(inv.investment_amount || 0), 0);
+    const totalBuyers = new Set(investmentsResult.rows.map(inv => inv.user_name)).size;
+    const totalTokens = parseInt(property.tokenization_total_tokens || 0);
+    const availableTokens = parseInt(property.tokenization_available_tokens || 0);
+    const tokensSold = totalTokens - availableTokens;
+    const tokensLeft = availableTokens;
+    const pricePerToken = parseFloat(property.tokenization_price_per_token || 0);
+    const roi = parseFloat(property.pricing_expected_roi || 0);
+    const fundingProgress = totalTokens > 0 ? ((tokensSold / totalTokens) * 100).toFixed(2) : 0;
+
+    const metrics = {
+      totalInvestment,
+      totalBuyers,
+      totalTokens,
+      tokensSold,
+      tokensLeft,
+      pricePerToken,
+      roi,
+      fundingProgress
+    };
+
+    res.json({
+      success: true,
+      data: {
+        ...property,
+        metrics,
+        investments: investmentsResult.rows,
+        tokenPurchases: tokenPurchasesResult.rows,
+        tokenTransactions: tokenTransactionsResult.rows
+      }
+    });
+  } catch (error) {
+    console.error('Get property detail error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get property details',
       message: error.message
     });
   }

@@ -20,6 +20,7 @@ import { useAdminAuth } from '../../components/admin/AdminAuth';
 import PropertiesManagement from './PropertiesManagement';
 import UsersManagement from './UsersManagement';
 import TransactionsManagement from './TransactionsManagement';
+import InvestmentsManagement from './InvestmentsManagement';
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
@@ -69,21 +70,22 @@ const AdminDashboard = () => {
     }
   );
 
-  const stats = dashboardData?.data || {};
-  const analytics = analyticsData?.data || {};
+  const stats = dashboardData?.data?.data || dashboardData?.data || {};
+  const analytics = analyticsData?.data?.data || analyticsData?.data || {};
 
   const tabs = [
     { id: 'overview', label: 'Overview', icon: BarChart3 },
     { id: 'properties', label: 'Properties', icon: Building2 },
     { id: 'users', label: 'Users', icon: Users },
     { id: 'transactions', label: 'Transactions', icon: DollarSign },
-    { id: 'investments', label: 'Investments', icon: TrendingUp },
-    { id: 'analytics', label: 'Analytics', icon: Activity },
-    { id: 'settings', label: 'Settings', icon: Settings }
+    { id: 'investments', label: 'Investments', icon: TrendingUp }
   ];
 
-  const StatCard = ({ title, value, icon: Icon, color = 'blue', change, changeType = 'positive' }) => (
-    <Card className="p-6">
+  const StatCard = ({ title, value, icon: Icon, color = 'blue', change, changeType = 'positive', onClick }) => (
+    <Card 
+      className={`p-6 ${onClick ? 'cursor-pointer hover:shadow-lg transition-shadow duration-200 hover:bg-gray-50' : ''}`}
+      onClick={onClick}
+    >
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm font-medium text-gray-600">{title}</p>
@@ -106,20 +108,22 @@ const AdminDashboard = () => {
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
-          title="Total Users"
-          value={stats.totalUsers || 0}
+          title="Active Users"
+          value={stats.activeUsers || stats.totalUsers || 0}
           icon={Users}
           color="blue"
           change={analytics.usersGrowth}
           changeType="positive"
+          onClick={() => setActiveTab('users')}
         />
         <StatCard
-          title="Active Properties"
-          value={stats.activeProperties || 0}
+          title="Total Properties"
+          value={stats.totalProperties || stats.activeProperties || 0}
           icon={Building2}
           color="green"
           change={analytics.propertiesGrowth}
           changeType="positive"
+          onClick={() => setActiveTab('properties')}
         />
         <StatCard
           title="Total Investments"
@@ -128,6 +132,7 @@ const AdminDashboard = () => {
           color="yellow"
           change={analytics.investmentsGrowth}
           changeType="positive"
+          onClick={() => setActiveTab('investments')}
         />
         <StatCard
           title="Active Transactions"
@@ -136,6 +141,7 @@ const AdminDashboard = () => {
           color="purple"
           change={analytics.transactionsGrowth}
           changeType="positive"
+          onClick={() => setActiveTab('transactions')}
         />
       </div>
 
@@ -221,11 +227,7 @@ const AdminDashboard = () => {
       case 'transactions':
         return <TransactionsManagement />;
       case 'investments':
-        return <div className="text-center py-12"><p>Investments management coming soon...</p></div>;
-      case 'analytics':
-        return <div className="text-center py-12"><p>Analytics coming soon...</p></div>;
-      case 'settings':
-        return <div className="text-center py-12"><p>Settings coming soon...</p></div>;
+        return <InvestmentsManagement />;
       default:
         return renderOverview();
     }

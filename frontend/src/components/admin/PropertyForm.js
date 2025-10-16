@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Building2, MapPin, DollarSign, TrendingUp, Hash, Plus, Trash2, Calendar, Settings } from 'lucide-react';
+import { X, Save, Building2, MapPin, DollarSign, TrendingUp, Hash, Plus, Trash2, Calendar, Settings, Edit } from 'lucide-react';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
+import SimpleMap from './SimpleMap';
 
 const PropertyForm = ({ property, onSave, onCancel, isLoading }) => {
   const [formData, setFormData] = useState({
@@ -57,6 +58,8 @@ const PropertyForm = ({ property, onSave, onCancel, isLoading }) => {
   });
 
   const [newUnitType, setNewUnitType] = useState({ type: '', size: '', price: '' });
+  const [editingUnitIndex, setEditingUnitIndex] = useState(null);
+  const [editingUnit, setEditingUnit] = useState({ type: '', size: '', price: '' });
   const [newFeature, setNewFeature] = useState('');
   const [newAmenity, setNewAmenity] = useState('');
   const [newDocument, setNewDocument] = useState({ name: '', url: '', type: '' });
@@ -117,12 +120,43 @@ const PropertyForm = ({ property, onSave, onCancel, isLoading }) => {
         }
       }
 
+      // Auto-generate Unit Types when Total Units changes
+      if (name === 'total_units' && value) {
+        const totalUnits = parseInt(value);
+        if (totalUnits > 0 && totalUnits <= 10) {
+          const generatedUnitTypes = [];
+          for (let i = 1; i <= totalUnits; i++) {
+            generatedUnitTypes.push({
+              type: `${i}BR`,
+              size: `${800 + (i * 200)} sq ft`,
+              price: `${(1000000 + (i * 500000)).toLocaleString()}`
+            });
+          }
+          newData.unit_types = generatedUnitTypes;
+        }
+      }
+
       return newData;
     });
   };
 
+  const handleLocationChange = (latitude, longitude) => {
+    setFormData(prev => ({
+      ...prev,
+      location_latitude: latitude.toFixed(6),
+      location_longitude: longitude.toFixed(6)
+    }));
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
+    
+    // Validate required fields
+    if (formData.documents.length === 0) {
+      alert('Please add at least one document before saving the property.');
+      return;
+    }
+    
     const finalData = {
       ...formData,
       seo: seoData
@@ -197,11 +231,11 @@ const PropertyForm = ({ property, onSave, onCancel, isLoading }) => {
       location_latitude: (24.8 + Math.random() * 0.2).toFixed(6),
       location_longitude: (67.0 + Math.random() * 0.2).toFixed(6),
       property_type: randomPropertyType,
-      project_type: randomPropertyType === 'mixed-use' ? 'residential-commercial' : randomPropertyType,
+      project_type: ['residential', 'commercial', 'mixed-use', 'residential-commercial', 'retail', 'office'][Math.floor(Math.random() * 6)],
       status: randomStatus,
       floors: Math.floor(Math.random() * 20) + 5,
-      total_units: Math.floor(Math.random() * 200) + 50,
-      construction_progress: Math.floor(Math.random() * 100),
+      total_units: Math.floor(Math.random() * 10) + 1,
+      construction_progress: [0, 25, 50, 75, 100][Math.floor(Math.random() * 5)],
       start_date: startDate.toISOString().split('T')[0],
       expected_completion: completionDate.toISOString().split('T')[0],
       handover_date: new Date(completionDate.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
@@ -270,7 +304,9 @@ const PropertyForm = ({ property, onSave, onCancel, isLoading }) => {
       documents: [
         { name: 'Approval Letter', url: 'https://example.com/approval.pdf', type: 'approval' },
         { name: 'Floor Plan', url: 'https://example.com/floorplan.pdf', type: 'floorplan' },
-        { name: 'Legal Documents', url: 'https://example.com/legal.pdf', type: 'legal' }
+        { name: 'Legal Documents', url: 'https://example.com/legal.pdf', type: 'legal' },
+        { name: 'Property Deed', url: 'https://example.com/deed.pdf', type: 'legal' },
+        { name: 'Survey Report', url: 'https://example.com/survey.pdf', type: 'technical' }
       ],
       property_features: [
         'Modern Architecture',
@@ -324,6 +360,30 @@ const PropertyForm = ({ property, onSave, onCancel, isLoading }) => {
       ...prev,
       unit_types: prev.unit_types.filter((_, i) => i !== index)
     }));
+  };
+
+  const editUnitType = (index) => {
+    const unit = formData.unit_types[index];
+    setEditingUnitIndex(index);
+    setEditingUnit({ ...unit });
+  };
+
+  const saveUnitType = () => {
+    if (editingUnitIndex !== null) {
+      setFormData(prev => ({
+        ...prev,
+        unit_types: prev.unit_types.map((unit, index) => 
+          index === editingUnitIndex ? editingUnit : unit
+        )
+      }));
+      setEditingUnitIndex(null);
+      setEditingUnit({ type: '', size: '', price: '' });
+    }
+  };
+
+  const cancelEditUnitType = () => {
+    setEditingUnitIndex(null);
+    setEditingUnit({ type: '', size: '', price: '' });
   };
 
   // Features Management
@@ -587,6 +647,22 @@ const PropertyForm = ({ property, onSave, onCancel, isLoading }) => {
                 />
               </div>
             </div>
+            
+            {/* Location Map */}
+            <div className="mt-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Property Location Map
+              </label>
+              <p className="text-sm text-gray-600 mb-3">
+                Enter coordinates manually or use the map links to verify location. The latitude and longitude will be updated automatically.
+              </p>
+              <SimpleMap
+                latitude={formData.location_latitude}
+                longitude={formData.location_longitude}
+                onLocationChange={handleLocationChange}
+                height="400px"
+              />
+            </div>
           </Card>
 
           {/* Property Details */}
@@ -616,14 +692,26 @@ const PropertyForm = ({ property, onSave, onCancel, isLoading }) => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Project Type *
                 </label>
-                <input
-                  type="text"
+                <select
                   name="project_type"
                   value={formData.project_type}
                   onChange={handleChange}
                   required
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
+                >
+                  <option value="">Select Project Type</option>
+                  <option value="residential">Residential</option>
+                  <option value="commercial">Commercial</option>
+                  <option value="mixed-use">Mixed Use</option>
+                  <option value="residential-commercial">Residential-Commercial</option>
+                  <option value="retail">Retail</option>
+                  <option value="office">Office</option>
+                  <option value="industrial">Industrial</option>
+                  <option value="hospitality">Hospitality</option>
+                  <option value="healthcare">Healthcare</option>
+                  <option value="educational">Educational</option>
+                  <option value="recreational">Recreational</option>
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -664,26 +752,84 @@ const PropertyForm = ({ property, onSave, onCancel, isLoading }) => {
                 </label>
                 <input
                   type="number"
+                  min="1"
+                  max="10"
                   name="total_units"
                   value={formData.total_units}
                   onChange={handleChange}
                   required
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Enter number of units (1-10)"
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  Unit types will be automatically generated based on this number
+                </p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Construction Progress (%)
                 </label>
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  name="construction_progress"
-                  value={formData.construction_progress}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
+                <div className="space-y-3">
+                  {/* Quick Progress Buttons */}
+                  <div className="flex space-x-2">
+                    <button
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, construction_progress: 25 }))}
+                      className={`px-3 py-1 text-sm rounded-md border ${
+                        formData.construction_progress === 25
+                          ? 'bg-blue-500 text-white border-blue-500'
+                          : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      25%
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, construction_progress: 50 }))}
+                      className={`px-3 py-1 text-sm rounded-md border ${
+                        formData.construction_progress === 50
+                          ? 'bg-blue-500 text-white border-blue-500'
+                          : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      50%
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, construction_progress: 75 }))}
+                      className={`px-3 py-1 text-sm rounded-md border ${
+                        formData.construction_progress === 75
+                          ? 'bg-blue-500 text-white border-blue-500'
+                          : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      75%
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, construction_progress: 100 }))}
+                      className={`px-3 py-1 text-sm rounded-md border ${
+                        formData.construction_progress === 100
+                          ? 'bg-blue-500 text-white border-blue-500'
+                          : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      100%
+                    </button>
+                  </div>
+                  
+                  {/* Manual Input Field */}
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    name="construction_progress"
+                    value={formData.construction_progress}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Enter custom progress (0-100)"
+                  />
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -957,7 +1103,17 @@ const PropertyForm = ({ property, onSave, onCancel, isLoading }) => {
 
           {/* Unit Types */}
           <Card className="p-6">
-            <h4 className="text-lg font-semibold text-gray-900 mb-4">Unit Types</h4>
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="text-lg font-semibold text-gray-900">Unit Types</h4>
+              <p className="text-sm text-gray-500">
+                {formData.unit_types.length > 0 ? `${formData.unit_types.length} units generated` : 'Enter Total Units above to auto-generate'}
+              </p>
+            </div>
+            {formData.unit_types.length > 0 && (
+              <p className="text-xs text-gray-500 mb-4">
+                💡 Click the edit button to modify any unit type. You can change the type, size, or price.
+              </p>
+            )}
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <input
@@ -987,21 +1143,82 @@ const PropertyForm = ({ property, onSave, onCancel, isLoading }) => {
                 </Button>
               </div>
               {formData.unit_types.map((unit, index) => (
-                <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div className="flex space-x-4">
-                    <span className="font-medium">{unit.type}</span>
-                    <span className="text-gray-600">{unit.size}</span>
-                    <span className="text-green-600">PKR {unit.price}</span>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => removeUnitType(index)}
-                    className="text-red-600 hover:text-red-700"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+                <div key={index} className="p-3 bg-gray-50 rounded-lg">
+                  {editingUnitIndex === index ? (
+                    // Edit Mode
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <input
+                          type="text"
+                          placeholder="Unit Type (e.g., 2BR)"
+                          value={editingUnit.type}
+                          onChange={(e) => setEditingUnit(prev => ({ ...prev, type: e.target.value }))}
+                          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Size (e.g., 1200 sqft)"
+                          value={editingUnit.size}
+                          onChange={(e) => setEditingUnit(prev => ({ ...prev, size: e.target.value }))}
+                          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Price (e.g., 5000000)"
+                          value={editingUnit.price}
+                          onChange={(e) => setEditingUnit(prev => ({ ...prev, price: e.target.value }))}
+                          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </div>
+                      <div className="flex space-x-2">
+                        <Button
+                          type="button"
+                          onClick={saveUnitType}
+                          size="sm"
+                          className="bg-green-600 hover:bg-green-700"
+                        >
+                          Save
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={cancelEditUnitType}
+                          size="sm"
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    // Display Mode
+                    <div className="flex items-center justify-between">
+                      <div className="flex space-x-4">
+                        <span className="font-medium">{unit.type}</span>
+                        <span className="text-gray-600">{unit.size}</span>
+                        <span className="text-green-600">PKR {unit.price}</span>
+                      </div>
+                      <div className="flex space-x-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => editUnitType(index)}
+                          className="text-blue-600 hover:text-blue-700"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => removeUnitType(index)}
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -1009,7 +1226,10 @@ const PropertyForm = ({ property, onSave, onCancel, isLoading }) => {
 
           {/* Features */}
           <Card className="p-6">
-            <h4 className="text-lg font-semibold text-gray-900 mb-4">Features</h4>
+            <h4 className="text-lg font-semibold text-gray-900 mb-4">Features (optional)</h4>
+            <p className="text-sm text-gray-600 mb-4">
+              Add property features like modern architecture, energy efficiency, smart home features, etc. This field is optional.
+            </p>
             <div className="space-y-4">
               <div className="flex space-x-2">
                 <input
@@ -1043,7 +1263,10 @@ const PropertyForm = ({ property, onSave, onCancel, isLoading }) => {
 
           {/* Amenities */}
           <Card className="p-6">
-            <h4 className="text-lg font-semibold text-gray-900 mb-4">Amenities</h4>
+            <h4 className="text-lg font-semibold text-gray-900 mb-4">Amenities (optional)</h4>
+            <p className="text-sm text-gray-600 mb-4">
+              Add property amenities like swimming pool, gym, parking, security, etc. This field is optional.
+            </p>
             <div className="space-y-4">
               <div className="flex space-x-2">
                 <input
@@ -1077,7 +1300,22 @@ const PropertyForm = ({ property, onSave, onCancel, isLoading }) => {
 
           {/* Documents */}
           <Card className="p-6">
-            <h4 className="text-lg font-semibold text-gray-900 mb-4">Documents</h4>
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="text-lg font-semibold text-gray-900">Documents *</h4>
+              <span className="text-sm text-gray-500">
+                {formData.documents.length} document{formData.documents.length !== 1 ? 's' : ''} added
+              </span>
+            </div>
+            <p className="text-sm text-gray-600 mb-4">
+              Add important property documents like approval letters, floor plans, legal documents, etc.
+            </p>
+            {formData.documents.length === 0 && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
+                <p className="text-sm text-yellow-800">
+                  ⚠️ At least one document is required to save the property.
+                </p>
+              </div>
+            )}
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <input
@@ -1135,7 +1373,10 @@ const PropertyForm = ({ property, onSave, onCancel, isLoading }) => {
 
           {/* Property Features */}
           <Card className="p-6">
-            <h4 className="text-lg font-semibold text-gray-900 mb-4">Property Features</h4>
+            <h4 className="text-lg font-semibold text-gray-900 mb-4">Property Features (optional)</h4>
+            <p className="text-sm text-gray-600 mb-4">
+              Add specific property features like premium finishes, high ceilings, balcony access, etc. This field is optional.
+            </p>
             <div className="space-y-4">
               <div className="flex space-x-2">
                 <input

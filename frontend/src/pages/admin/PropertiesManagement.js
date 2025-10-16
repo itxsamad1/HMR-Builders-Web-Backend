@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
+import { useNavigate } from 'react-router-dom';
 import { 
   Plus, 
   Search, 
@@ -24,6 +25,7 @@ import { useAdminAuth } from '../../components/admin/AdminAuth';
 
 const PropertiesManagement = () => {
   const { isAuthenticated } = useAdminAuth();
+  const navigate = useNavigate();
   const [filters, setFilters] = useState({
     search: '',
     status: '',
@@ -421,7 +423,12 @@ const PropertiesManagement = () => {
                         </div>
                         <div className="ml-4">
                           <div className="text-sm font-medium text-gray-900">
-                            {property.title}
+                            <button
+                              onClick={() => navigate(`/admin/property/${property.id}`)}
+                              className="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                            >
+                              {property.title}
+                            </button>
                           </div>
                           <div className="text-sm text-gray-500 flex items-center">
                             <MapPin className="w-3 h-3 mr-1" />

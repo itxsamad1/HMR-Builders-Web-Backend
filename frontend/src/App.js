@@ -14,6 +14,7 @@ import Profile from './pages/Profile';
 import Wallet from './pages/Wallet';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminLogin from './pages/admin/AdminLogin';
+import PropertyDetail from './pages/admin/PropertyDetail';
 import { AdminAuthProvider } from './components/admin/AdminAuth';
 
 // Create a client
@@ -50,6 +51,11 @@ function App() {
                     <Route path="/admin" element={
                       <AdminAuthProvider>
                         <AdminDashboard />
+                      </AdminAuthProvider>
+                    } />
+                    <Route path="/admin/property/:propertyId" element={
+                      <AdminAuthProvider>
+                        <PropertyDetail />
                       </AdminAuthProvider>
                     } />
               <Route path="*" element={<Navigate to="/" replace />} />

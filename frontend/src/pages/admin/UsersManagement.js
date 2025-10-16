@@ -27,10 +27,12 @@ import { useAdminAuth } from '../../components/admin/AdminAuth';
 
 const UsersManagement = () => {
   const { isAuthenticated } = useAdminAuth();
+  
   const [filters, setFilters] = useState({
     search: '',
     status: '',
     kyc_status: '',
+    include_inactive: false,
     sort_by: 'created_at',
     sort_order: 'desc'
   });
@@ -50,7 +52,8 @@ const UsersManagement = () => {
     () => adminAPI.getUsers({
       ...filters,
       page: currentPage,
-      limit: 10
+      limit: 10,
+      include_inactive: filters.include_inactive
     }),
     {
       enabled: isAuthenticated
@@ -101,12 +104,18 @@ const UsersManagement = () => {
         queryClient.invalidateQueries(['admin-users']);
         setShowDeleteModal(false);
         setUserToDelete(null);
+        console.log('User deleted successfully');
+      },
+      onError: (error) => {
+        console.error('Failed to delete user:', error);
+        alert('Failed to delete user. Please try again.');
       }
     }
   );
 
-  const users = usersData?.data?.users || [];
-  const pagination = usersData?.data?.pagination || {};
+  const users = usersData?.data?.data?.users || usersData?.data?.users || [];
+  const pagination = usersData?.data?.data?.pagination || usersData?.data?.pagination || {};
+
 
   const handleFilterChange = (key, value) => {
     setFilters(prev => ({ ...prev, [key]: value }));
@@ -146,13 +155,17 @@ const UsersManagement = () => {
   };
 
   const handleDeleteUser = (user) => {
+    console.log('Delete user clicked for:', user.name, user.id);
     setUserToDelete(user);
     setShowDeleteModal(true);
   };
 
   const confirmDeleteUser = () => {
     if (userToDelete) {
+      console.log('Confirming delete for user:', userToDelete.id);
       deleteUserMutation.mutate(userToDelete.id);
+    } else {
+      console.log('No user selected for deletion');
     }
   };
 
@@ -291,6 +304,22 @@ const UsersManagement = () => {
             </select>
           </div>
         </div>
+        
+        {/* Additional Options */}
+        <div className="mt-4 pt-4 border-t border-gray-200">
+          <div className="flex items-center">
+            <input
+              type="checkbox"
+              id="include_inactive"
+              checked={filters.include_inactive}
+              onChange={(e) => handleFilterChange('include_inactive', e.target.checked)}
+              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+            />
+            <label htmlFor="include_inactive" className="ml-2 text-sm text-gray-700">
+              Include inactive users (deleted users)
+            </label>
+          </div>
+        </div>
       </Card>
 
       {/* Users Table */}
@@ -338,8 +367,15 @@ const UsersManagement = () => {
                           </div>
                         </div>
                         <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">
-                            {user.name || 'Unknown User'}
+                          <div className="flex items-center space-x-2">
+                            <span className="text-sm font-medium text-gray-900">
+                              {user.name || 'Unknown User'}
+                            </span>
+                            {!user.is_active && (
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                Deleted
+                              </span>
+                            )}
                           </div>
                           <div className="text-sm text-gray-500">
                             ID: {user.id.slice(0, 8)}...
@@ -398,8 +434,10 @@ const UsersManagement = () => {
                         <Button 
                           variant="outline" 
                           size="sm" 
-                          className="text-red-600 hover:text-red-700"
-                          onClick={() => handleDeleteUser(user)}
+                          className={`${!user.is_active ? 'text-gray-400 cursor-not-allowed opacity-50' : 'text-red-600 hover:text-red-700 hover:bg-red-50'}`}
+                          onClick={() => !user.is_active ? null : handleDeleteUser(user)}
+                          title={!user.is_active ? 'User already deleted' : `Delete ${user.name}`}
+                          disabled={!user.is_active}
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>

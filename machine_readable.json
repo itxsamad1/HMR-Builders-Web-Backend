@@ -1,0 +1,354 @@
+{
+  "schema_branch": "new",
+  "project_id": "plain-heart-93607336",
+  "contexts": [
+    {
+      "context_name": "Wallet",
+      "canonical_tables": ["user_wallets", "wallet_transactions", "payment_methods"],
+      "canonical_columns": {
+        "user_wallets.user_id": "PK/FK to users",
+        "user_wallets.available_balance": "Primary balance field in PKR",
+        "user_wallets.total_balance": "Total balance including locked",
+        "user_wallets.locked_balance": "Amount locked in investments",
+        "user_wallets.total_investment": "Total amount invested",
+        "user_wallets.total_returns": "Total returns earned",
+        "wallet_transactions.amount_in_pkr": "Amount stored in PKR",
+        "wallet_transactions.metadata": "JSONB for bank/crypto meta",
+        "wallet_transactions.transaction_type": "deposit/withdrawal/investment/return/fee",
+        "wallet_transactions.status": "pending/processing/completed/failed/cancelled",
+        "payment_methods.card_type": "visa/mastercard",
+        "payment_methods.billing_address": "JSONB for address details"
+      },
+      "observed_code_usages": [
+        {
+          "file": "routes/walletTransactions.js",
+          "function_or_component": "router.get('/user/:userId')",
+          "query_or_call": "SELECT wt.id, wt.user_id, wt.payment_method_id, wt.transaction_type, wt.amount, wt.currency, wt.exchange_rate, wt.amount_in_pkr, wt.status, wt.description, wt.reference_id, wt.metadata, wt.processed_at, wt.created_at FROM wallet_transactions wt WHERE wt.user_id = $1",
+          "tables": ["wallet_transactions"],
+          "columns": ["user_id", "transaction_type", "amount", "amount_in_pkr", "status", "metadata"],
+          "params": {"userId": "req.params.userId"},
+          "returns_shape": {"transactions": [...], "summary": {...}}
+        },
+        {
+          "file": "routes/walletTransactions.js",
+          "function_or_component": "router.post('/deposit')",
+          "query_or_call": "INSERT INTO wallet_transactions (user_id, payment_method_id, transaction_type, amount, currency, exchange_rate, amount_in_pkr, description, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+          "tables": ["wallet_transactions"],
+          "columns": ["user_id", "payment_method_id", "transaction_type", "amount", "amount_in_pkr", "status"],
+          "params": {"userId": "req.body.userId", "amount": "req.body.amount"},
+          "returns_shape": {"success": true, "transaction": {...}}
+        },
+        {
+          "file": "frontend/src/pages/Wallet.js",
+          "function_or_component": "Wallet",
+          "query_or_call": "useQuery(['wallet-balance', userId], () => usersAPI.getWalletById(userId))",
+          "tables": ["user_wallets"],
+          "columns": ["available_balance", "total_balance", "total_investment"],
+          "params": {"userId": "currentUser.id"},
+          "returns_shape": {"available_balance": 0, "total_balance": 0, "total_investment": 0}
+        }
+      ],
+      "duplicates_detected": [
+        {
+          "concept": "amount",
+          "columns_in_code": ["amount", "amount_in_pkr"],
+          "columns_in_db": ["wallet_transactions.amount", "wallet_transactions.amount_in_pkr"],
+          "recommendation": "Standardize on amount_in_pkr; convert in UI for USD"
+        }
+      ],
+      "breaking_inconsistencies": [
+        {
+          "area": "crypto withdrawals",
+          "reason": "backend expects metadata JSON; some clients still send flat fields",
+          "suggested_fix": "Always send metadata {type:'crypto',network,addr}; backend parses JSON"
+        }
+      ],
+      "proposed_unified_query_examples": [
+        {
+          "context": "Wallet summary",
+          "sql": "SELECT available_balance, total_balance, total_investment, total_returns FROM user_wallets WHERE user_id = $1",
+          "result_shape": {"available_balance": 0, "total_balance": 0, "total_investment": 0, "total_returns": 0}
+        }
+      ]
+    },
+    {
+      "context_name": "Properties",
+      "canonical_tables": ["properties"],
+      "canonical_columns": {
+        "properties.id": "Primary key",
+        "properties.title": "Property name",
+        "properties.slug": "URL-friendly identifier",
+        "properties.property_type": "residential/commercial/mixed-use",
+        "properties.status": "planning/construction/active/coming-soon/on-hold/sold-out/completed",
+        "properties.pricing_total_value": "Total property value in PKR",
+        "properties.pricing_expected_roi": "Expected ROI percentage",
+        "properties.pricing_min_investment": "Minimum investment amount",
+        "properties.tokenization_total_tokens": "Total tokens available",
+        "properties.tokenization_available_tokens": "Tokens remaining",
+        "properties.tokenization_price_per_token": "Price per token in PKR",
+        "properties.location_city": "City name",
+        "properties.unit_types": "JSONB array of unit configurations",
+        "properties.features": "JSONB array of property features",
+        "properties.images": "JSONB object with image URLs",
+        "properties.amenities": "JSONB array of amenities",
+        "properties.documents": "JSONB array of document URLs"
+      },
+      "observed_code_usages": [
+        {
+          "file": "routes/admin.js",
+          "function_or_component": "router.get('/properties')",
+          "query_or_call": "SELECT id, title, slug, property_type, status, pricing_total_value, pricing_min_investment, pricing_expected_roi, tokenization_total_tokens, tokenization_available_tokens, location_address, location_city, is_featured, is_active, created_at, updated_at FROM properties",
+          "tables": ["properties"],
+          "columns": ["id", "title", "slug", "property_type", "status", "pricing_total_value", "pricing_expected_roi", "tokenization_total_tokens", "tokenization_available_tokens"],
+          "params": {"page": "req.query.page", "limit": "req.query.limit"},
+          "returns_shape": {"properties": [...], "pagination": {...}}
+        },
+        {
+          "file": "routes/properties.js",
+          "function_or_component": "router.get('/')",
+          "query_or_call": "SELECT id, title, slug, short_description, images, pricing_total_value, pricing_min_investment, pricing_expected_roi, tokenization_total_tokens, tokenization_available_tokens, location_address, location_city, property_type, status, is_featured, created_at FROM properties WHERE is_active = true",
+          "tables": ["properties"],
+          "columns": ["id", "title", "slug", "pricing_total_value", "pricing_expected_roi", "tokenization_total_tokens", "tokenization_available_tokens"],
+          "params": {"page": "req.query.page", "limit": "req.query.limit"},
+          "returns_shape": {"properties": [...], "pagination": {...}}
+        },
+        {
+          "file": "frontend/src/pages/Properties.js",
+          "function_or_component": "Properties",
+          "query_or_call": "useQuery(['properties', filters, currentPage], () => propertiesAPI.getAll({...filters, page: currentPage}))",
+          "tables": ["properties"],
+          "columns": ["id", "title", "slug", "pricing_total_value", "pricing_expected_roi"],
+          "params": {"filters": "state", "currentPage": "state"},
+          "returns_shape": {"properties": [...], "pagination": {...}}
+        }
+      ],
+      "duplicates_detected": [
+        {
+          "concept": "pricing fields",
+          "columns_in_code": ["pricing_total_value", "pricing_market_value", "pricing_appreciation"],
+          "columns_in_db": ["properties.pricing_total_value", "properties.pricing_market_value", "properties.pricing_appreciation"],
+          "recommendation": "Use pricing_total_value as primary; market_value and appreciation are calculated fields"
+        }
+      ],
+      "breaking_inconsistencies": [],
+      "proposed_unified_query_examples": [
+        {
+          "context": "Property listing",
+          "sql": "SELECT id, title, slug, property_type, status, pricing_total_value, pricing_expected_roi, tokenization_total_tokens, tokenization_available_tokens, location_city, is_featured FROM properties WHERE is_active = true ORDER BY created_at DESC",
+          "result_shape": {"properties": [...], "pagination": {...}}
+        }
+      ]
+    },
+    {
+      "context_name": "Investments",
+      "canonical_tables": ["investments", "property_tokens", "property_token_purchases", "token_transactions"],
+      "canonical_columns": {
+        "investments.user_id": "FK to users",
+        "investments.property_id": "FK to properties",
+        "investments.investment_amount": "Amount invested in PKR",
+        "investments.tokens_purchased": "Number of tokens bought",
+        "investments.price_per_token": "Price paid per token",
+        "investments.status": "pending/confirmed/active/sold/cancelled",
+        "investments.payment_status": "pending/processing/completed/failed/refunded",
+        "property_tokens.user_id": "FK to users",
+        "property_tokens.property_id": "FK to properties",
+        "property_tokens.tokens_owned": "Number of tokens owned",
+        "property_token_purchases.tokens_purchased": "Tokens bought in transaction",
+        "property_token_purchases.amount": "Amount paid for tokens",
+        "token_transactions.transaction_type": "Type of token transaction",
+        "token_transactions.amount": "Transaction amount"
+      },
+      "observed_code_usages": [
+        {
+          "file": "routes/admin.js",
+          "function_or_component": "router.get('/investments')",
+          "query_or_call": "SELECT i.id, i.investment_amount, i.tokens_purchased, i.status, i.created_at, u.name as user_name, u.email as user_email, p.title as property_title, p.slug as property_slug FROM investments i JOIN users u ON i.user_id = u.id JOIN properties p ON i.property_id = p.id",
+          "tables": ["investments", "users", "properties"],
+          "columns": ["investment_amount", "tokens_purchased", "status", "user_name", "property_title"],
+          "params": {"page": "req.query.page", "limit": "req.query.limit"},
+          "returns_shape": {"investments": [...], "pagination": {...}}
+        },
+        {
+          "file": "routes/investments.js",
+          "function_or_component": "router.post('/')",
+          "query_or_call": "INSERT INTO investments (user_id, property_id, investment_amount, tokens_purchased, price_per_token, payment_method, status) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+          "tables": ["investments"],
+          "columns": ["user_id", "property_id", "investment_amount", "tokens_purchased", "price_per_token"],
+          "params": {"userId": "req.user.id", "propertyId": "req.body.propertyId"},
+          "returns_shape": {"success": true, "investment": {...}}
+        },
+        {
+          "file": "frontend/src/pages/Dashboard.js",
+          "function_or_component": "Dashboard",
+          "query_or_call": "useQuery(['investments', userId], () => investmentsAPI.getByUserId(userId))",
+          "tables": ["investments"],
+          "columns": ["investment_amount", "tokens_purchased", "status"],
+          "params": {"userId": "currentUser.id"},
+          "returns_shape": {"investments": [...], "summary": {...}}
+        }
+      ],
+      "duplicates_detected": [
+        {
+          "concept": "token amounts",
+          "columns_in_code": ["tokens_purchased", "tokens_owned"],
+          "columns_in_db": ["investments.tokens_purchased", "property_tokens.tokens_owned"],
+          "recommendation": "Use investments.tokens_purchased for transaction records, property_tokens.tokens_owned for current holdings"
+        }
+      ],
+      "breaking_inconsistencies": [
+        {
+          "area": "property status check",
+          "reason": "Investment creation checks property.status = 'active' but some properties have 'on-hold' status",
+          "suggested_fix": "Update investment logic to allow 'active' and 'on-hold' properties for investment"
+        }
+      ],
+      "proposed_unified_query_examples": [
+        {
+          "context": "User investments",
+          "sql": "SELECT i.id, i.investment_amount, i.tokens_purchased, i.status, p.title as property_title FROM investments i JOIN properties p ON i.property_id = p.id WHERE i.user_id = $1 ORDER BY i.created_at DESC",
+          "result_shape": {"investments": [...], "summary": {...}}
+        }
+      ]
+    },
+    {
+      "context_name": "Users",
+      "canonical_tables": ["users"],
+      "canonical_columns": {
+        "users.id": "Primary key UUID",
+        "users.email": "User email (unique)",
+        "users.name": "Full name",
+        "users.first_name": "First name",
+        "users.last_name": "Last name",
+        "users.phone": "Phone number",
+        "users.kyc_status": "pending/verified/rejected",
+        "users.is_active": "Account active status",
+        "users.role": "user/admin/moderator",
+        "users.investment_profile": "JSONB for investment preferences",
+        "users.kyc_documents": "JSONB for KYC document URLs"
+      },
+      "observed_code_usages": [
+        {
+          "file": "routes/admin.js",
+          "function_or_component": "router.get('/users')",
+          "query_or_call": "SELECT id, name, first_name, last_name, email, phone, kyc_status, is_active, created_at, updated_at FROM users WHERE is_active = true",
+          "tables": ["users"],
+          "columns": ["id", "name", "email", "kyc_status", "is_active"],
+          "params": {"page": "req.query.page", "limit": "req.query.limit"},
+          "returns_shape": {"users": [...], "pagination": {...}}
+        },
+        {
+          "file": "routes/users.js",
+          "function_or_component": "router.get('/profile')",
+          "query_or_call": "SELECT id, name, first_name, last_name, email, phone, kyc_status, investment_profile, created_at FROM users WHERE id = $1",
+          "tables": ["users"],
+          "columns": ["id", "name", "email", "kyc_status", "investment_profile"],
+          "params": {"userId": "req.user.id"},
+          "returns_shape": {"user": {...}}
+        },
+        {
+          "file": "frontend/src/pages/admin/UsersManagement.js",
+          "function_or_component": "UsersManagement",
+          "query_or_call": "useQuery(['admin-users', filters, currentPage], () => adminAPI.getUsers({...filters, page: currentPage}))",
+          "tables": ["users"],
+          "columns": ["id", "name", "email", "kyc_status", "is_active"],
+          "params": {"filters": "state", "currentPage": "state"},
+          "returns_shape": {"users": [...], "pagination": {...}}
+        }
+      ],
+      "duplicates_detected": [],
+      "breaking_inconsistencies": [
+        {
+          "area": "user deletion",
+          "reason": "Backend performs soft delete (is_active = false) but frontend expects hard delete",
+          "suggested_fix": "Update frontend to handle soft delete properly or change backend to hard delete"
+        }
+      ],
+      "proposed_unified_query_examples": [
+        {
+          "context": "User profile",
+          "sql": "SELECT id, name, first_name, last_name, email, phone, kyc_status, is_active, investment_profile, created_at FROM users WHERE id = $1",
+          "result_shape": {"user": {...}}
+        }
+      ]
+    },
+    {
+      "context_name": "Transactions",
+      "canonical_tables": ["wallet_transactions"],
+      "canonical_columns": {
+        "wallet_transactions.id": "Primary key",
+        "wallet_transactions.user_id": "FK to users",
+        "wallet_transactions.transaction_type": "deposit/withdrawal/investment/return/fee",
+        "wallet_transactions.amount_in_pkr": "Amount in PKR",
+        "wallet_transactions.status": "pending/processing/completed/failed/cancelled",
+        "wallet_transactions.metadata": "JSONB for transaction details",
+        "wallet_transactions.description": "Transaction description"
+      },
+      "observed_code_usages": [
+        {
+          "file": "routes/admin.js",
+          "function_or_component": "router.get('/transactions')",
+          "query_or_call": "SELECT wt.id, wt.transaction_type, wt.amount_in_pkr, wt.currency, wt.status, wt.description, wt.created_at, u.name as user_name, u.email as user_email FROM wallet_transactions wt JOIN users u ON wt.user_id = u.id",
+          "tables": ["wallet_transactions", "users"],
+          "columns": ["transaction_type", "amount_in_pkr", "status", "user_name"],
+          "params": {"page": "req.query.page", "limit": "req.query.limit"},
+          "returns_shape": {"transactions": [...], "pagination": {...}}
+        },
+        {
+          "file": "frontend/src/pages/admin/TransactionsManagement.js",
+          "function_or_component": "TransactionsManagement",
+          "query_or_call": "useQuery(['admin-transactions', filters, currentPage], () => adminAPI.getTransactions({...filters, page: currentPage}))",
+          "tables": ["wallet_transactions"],
+          "columns": ["transaction_type", "amount_in_pkr", "status"],
+          "params": {"filters": "state", "currentPage": "state"},
+          "returns_shape": {"transactions": [...], "pagination": {...}}
+        }
+      ],
+      "duplicates_detected": [],
+      "breaking_inconsistencies": [],
+      "proposed_unified_query_examples": [
+        {
+          "context": "Transaction history",
+          "sql": "SELECT id, transaction_type, amount_in_pkr, status, description, created_at FROM wallet_transactions WHERE user_id = $1 ORDER BY created_at DESC",
+          "result_shape": {"transactions": [...], "summary": {...}}
+        }
+      ]
+    }
+  ],
+  "migrations": [],
+  "raw_schema_tree": {
+    "neondb.public": {
+      "tables": {
+        "users": {
+          "columns": ["id", "email", "name", "first_name", "last_name", "phone", "kyc_status", "is_active", "role", "investment_profile", "kyc_documents"],
+          "indexes": ["users_pkey", "users_email_key", "idx_users_email", "idx_users_kyc_status", "idx_users_status", "idx_users_role"],
+          "constraints": ["users_role_check", "users_kyc_status_check", "users_status_check"]
+        },
+        "user_wallets": {
+          "columns": ["id", "user_id", "total_balance", "available_balance", "locked_balance", "total_tokens", "total_investment", "total_returns"],
+          "indexes": ["user_wallets_pkey", "idx_user_wallets_user_id"],
+          "constraints": ["user_wallets_user_id_fkey"]
+        },
+        "wallet_transactions": {
+          "columns": ["id", "user_id", "payment_method_id", "transaction_type", "amount", "currency", "exchange_rate", "amount_in_pkr", "status", "description", "metadata"],
+          "indexes": ["wallet_transactions_pkey", "idx_wallet_transactions_user_id", "idx_wallet_transactions_type", "idx_wallet_transactions_status"],
+          "constraints": ["wallet_transactions_transaction_type_check", "wallet_transactions_status_check", "wallet_transactions_user_id_fkey"]
+        },
+        "properties": {
+          "columns": ["id", "title", "slug", "description", "property_type", "status", "pricing_total_value", "pricing_expected_roi", "tokenization_total_tokens", "tokenization_available_tokens", "location_city", "is_active", "is_featured"],
+          "indexes": ["properties_pkey", "properties_slug_key", "idx_properties_slug", "idx_properties_status", "idx_properties_is_active", "idx_properties_is_featured"],
+          "constraints": ["properties_status_check", "properties_property_type_check"]
+        },
+        "investments": {
+          "columns": ["id", "user_id", "property_id", "investment_amount", "tokens_purchased", "price_per_token", "status", "payment_status"],
+          "indexes": ["investments_pkey", "idx_investments_user_id", "idx_investments_property_id", "idx_investments_status", "idx_investments_payment_status"],
+          "constraints": ["investments_user_id_fkey", "investments_property_id_fkey"]
+        },
+        "payment_methods": {
+          "columns": ["id", "user_id", "card_type", "card_number_masked", "card_holder_name", "billing_address", "currency", "is_default", "is_verified", "status"],
+          "indexes": ["payment_methods_pkey", "idx_payment_methods_user_id", "idx_payment_methods_card_type", "idx_payment_methods_is_default"],
+          "constraints": ["payment_methods_user_id_fkey", "payment_methods_card_type_check"]
+        }
+      }
+    }
+  }
+}
